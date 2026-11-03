@@ -209,7 +209,7 @@ async function rest(path,{method='GET',body,prefer}={},again=false){
   const txt=await r.text();if(!r.ok){let m=txt;try{m=JSON.parse(txt).message||txt}catch{}throw{code:r.status,message:m}}
   return txt?JSON.parse(txt):null}
 async function selectAll(table){let out=[];for(let from=0;;from+=1000){const rows=await rest(`${table}?select=*&order=${KEYS[table]||'user_id'}&limit=1000&offset=${from}`);out=out.concat(rows);if(rows.length<1000)return out}}
-const KEYS={words:'id',srs:'word_id',questions:'id',days:'date'};
+const KEYS={words:'id',srs:'word_id',questions:'id',days:'date',attempts:'id'};
 function strip(r){const o={...r};delete o.user_id;return o}
 function errText(e){if(e&&e.code==='auth')return'로그인이 만료됐어. 다시 로그인해줘.';if(!navigator.onLine)return'오프라인이야. 연결되면 다시 해줘.';return'저장하지 못했어 ('+(e&&e.code||'오류')+'). '+String(e&&e.message||'').slice(0,80)}
 async function upsertMany(table,rows){const kc=KEYS[table];for(let i=0;i<rows.length;i+=200){
@@ -413,15 +413,20 @@ function pick(part,n){const lv=Math.round(S.settings['lv'+part]);
   return pool(part).map(([id,q])=>[id,Math.abs((q.level||1)-lv)*10+(q.seen?(q.last_ok?6:2):0)+Math.random()*2]).sort((a,b)=>a[1]-b[1]).slice(0,n).map(x=>x[0])}
 function unseenAt(part){const lv=Math.round(S.settings['lv'+part]);return pool(part).filter(([,q])=>!q.seen&&(q.level||1)===lv).length}
 function adjustLv(part,q,ok){const k='lv'+part;const lv=S.settings[k];S.settings[k]=clamp(lv+(ok?((q.level||1)>=Math.round(lv)?0.12:0.05):-0.15),1,3)}
-function recordQ(id,q,results){const wrong=results.filter(r=>!r.ok).length;
-  const nq={...clone(q),seen:(q.seen||0)+1,wrong:(q.wrong||0)+(wrong?1:0),last_ok:!wrong,last_at:Date.now()};
+// 마지막으로 풀었을 때 틀린 문제 (오래된 것부터)
+function wrongIds(part){return pool(part).filter(([,q])=>q.last_ok===false).sort((a,b)=>(a[1].last_at||0)-(b[1].last_at||0)).map(x=>x[0])}
+// results: [{type, ok, picked, answer, item}]. 풀이 1회마다 attempts 에 고른 보기를 남긴다 (약점 분석용).
+function recordQ(id,q,results,review){const wrong=results.filter(r=>!r.ok).length;const now=Date.now();
+  const nq={...clone(q),seen:(q.seen||0)+1,wrong:(q.wrong||0)+(wrong?1:0),last_ok:!wrong,last_at:now};
   S.qs.set(id,nq);upsert('questions',id,nq);
+  results.forEach((r,k)=>{const aid=now.toString(36)+'-'+k+'-'+Math.random().toString(36).slice(2,6);
+    upsert('attempts',aid,{at:now,qid:id,part:q.part,item:r.item||0,type:r.type,level:q.level||1,picked:r.picked,answer:r.answer,ok:r.ok,review:!!review})});
   const p_q={};for(const r of results){const key=q.part+':'+r.type;const o=p_q[key]=p_q[key]||{n:0,c:0};o.n++;if(r.ok)o.c++}
   bumpDay({p_q})}
 
 function rQuiz(part){
   if(S.session&&S.session.view==='p'+part){return part===5?rP5():rP6()}
-  const n=pool(part).length;const un=unseenAt(part);const lv=S.settings['lv'+part];const weak=weakTypes(part);
+  const n=pool(part).length;const un=unseenAt(part);const lv=S.settings['lv'+part];const weak=weakTypes(part);const nw=wrongIds(part).length;
   V.innerHTML=`<div class="stack">
   <div><div class="eyebrow">${part===5?'Part 5 · 단문 빈칸':'Part 6 · 장문 빈칸'}</div><h2>${part===5?'문법·어휘 문제':'장문 빈칸 채우기'}</h2></div>
   <div class="sheet stack">
@@ -431,6 +436,7 @@ function rQuiz(part){
       <div class="tile"><div class="n">${n}</div><div class="l">보유 ${part===5?'문제':'지문'}</div></div></div>
     <div class="muted" style="font-size:13px">지금 난이도: <b style="color:var(--ink)">${LVNAME[Math.round(lv)]}</b>. 맞히면 레벨이 오르고 틀리면 내려가서 다음 출제에 반영돼.</div>
     <div class="row"><button class="primary" id="qs" ${n?'':'disabled'}>${part===5?'10문제 풀기':'지문 1개 풀기'}</button>
+      ${nw?`<button id="qw">틀린 ${part===5?'문제':'지문'} 다시 (${nw})</button>`:''}
       <select id="qlv" aria-label="레벨 직접 설정"><option value="">레벨 직접 설정</option><option value="1">1 · 기본</option><option value="2">2 · 중급</option><option value="3">3 · 고난도</option></select></div>
   </div>
   <div class="sheet stack">
@@ -440,16 +446,18 @@ function rQuiz(part){
     <div class="gen-out" id="qgo" hidden></div>
   </div></div>`;
   qs.onclick=()=>part===5?startP5():startP6();
+  if(nw)qw.onclick=()=>part===5?startP5(true):startP6(true);
   qlv.onchange=()=>{if(!qlv.value)return;S.settings['lv'+part]=+qlv.value;saveSettings();toast('레벨을 '+qlv.value+'로 바꿨어');rQuiz(part)};
   qg.onclick=()=>generate(part);
   if(!CFG.claudeKey){qg.disabled=true;qgo.hidden=false;qgo.innerHTML='Claude API 키가 없어. <a href="#deck">단어장 탭 아래 설정</a>에서 넣어줘.'}}
 
-function startP5(){const ids=pick(5,10);if(!ids.length)return;S.session={view:'p5',list:ids,i:0,picked:null,ok:0};rP5()}
+// review: 오답 다시 풀기. 정답을 이미 본 문제라 레벨은 조정하지 않는다.
+function startP5(review){const ids=review?shuffle(wrongIds(5)).slice(0,10):pick(5,10);if(!ids.length)return;S.session={view:'p5',list:ids,i:0,picked:null,ok:0,review:!!review};rP5()}
 function rP5(){const s=S.session;if(s.i>=s.list.length)return finishQ(5);const id=s.list[s.i];const q=S.qs.get(id);if(!q){s.i++;return rP5()}
   const done=s.picked!=null;const ok=done&&s.picked===q.answer;
   const stem=esc(q.stem).replace(/-{3,}/,'<span class="blank">______</span>');
   V.innerHTML=`<div class="stack"><div class="row" style="justify-content:space-between"><span class="eyebrow">${101+s.i}번 · ${s.i+1}/${s.list.length}</span>
-    <span class="row" style="gap:6px"><span class="chip lv${q.level||1}">L${q.level||1}</span>${done?`<span class="chip">${esc(q.type)}</span>`:''}<button class="sm ghost" id="pq">그만하기</button></span></div>
+    <span class="row" style="gap:6px">${s.review?'<span class="chip">오답 다시</span>':''}<span class="chip lv${q.level||1}">L${q.level||1}</span>${done?`<span class="chip">${esc(q.type)}</span>`:''}<button class="sm ghost" id="pq">그만하기</button></span></div>
     <div class="progress"><i style="width:${s.i/s.list.length*100}%"></i></div>
     <div class="sheet stack"><div class="stem">${stem}</div>
     <div class="choices">${q.choices.map((c,i)=>{const cls=done?(i===q.answer?'ok':i===s.picked?'no':''):'';
@@ -459,15 +467,15 @@ function rP5(){const s=S.session;if(s.i>=s.list.length)return finishQ(5);const i
   V.querySelectorAll('.choice').forEach(b=>b.onclick=()=>answerP5(+b.dataset.i));
   if(done)pn.onclick=nextP5;pq.onclick=()=>finishQ(5)}
 function answerP5(i){const s=S.session;if(s.picked!=null||i<0||i>3)return;const id=s.list[s.i];const q=S.qs.get(id);s.picked=i;const ok=i===q.answer;if(ok)s.ok++;
-  recordQ(id,q,[{type:q.type,ok}]);adjustLv(5,q,ok);saveSettings();rP5()}
+  recordQ(id,q,[{type:q.type,ok,picked:i,answer:q.answer,item:0}],s.review);if(!s.review){adjustLv(5,q,ok);saveSettings()}rP5()}
 function nextP5(){const s=S.session;s.i++;s.picked=null;rP5()}
 
-function startP6(){const ids=pick(6,1);if(!ids.length)return;S.session={view:'p6',list:ids,i:0,ans:{},graded:false,ok:0,total:0};rP6()}
+function startP6(review){const ids=review?wrongIds(6).slice(0,1):pick(6,1);if(!ids.length)return;S.session={view:'p6',list:ids,i:0,ans:{},graded:false,ok:0,total:0,review:!!review};rP6()}
 function rP6(){const s=S.session;if(s.i>=s.list.length)return finishQ(6);const id=s.list[s.i];const q=S.qs.get(id);
   const base=131;const g=s.graded;
   const passage=esc(q.passage).replace(/\[(\d)\]/g,(m,n)=>`<span class="blank">${base+(+n)-1}</span>`);
   V.innerHTML=`<div class="stack"><div class="row" style="justify-content:space-between"><span class="eyebrow">${esc(q.title||'Part 6')}</span>
-    <span class="row" style="gap:6px"><span class="chip lv${q.level||1}">L${q.level||1}</span><button class="sm ghost" id="pq">그만하기</button></span></div>
+    <span class="row" style="gap:6px">${s.review?'<span class="chip">오답 다시</span>':''}<span class="chip lv${q.level||1}">L${q.level||1}</span><button class="sm ghost" id="pq">그만하기</button></span></div>
     <div class="sheet"><div class="passage">${passage}</div></div>
     ${q.items.map((it,k)=>{const a=s.ans[k];return`<div class="sheet stack"><div class="row" style="justify-content:space-between"><b>${base+k}번</b>${g?`<span class="chip">${esc(it.type)}</span>`:''}</div>
       <div class="choices">${it.choices.map((c,i)=>{const cls=g?(i===it.answer?'ok':i===a?'no':''):(i===a?'sel':'');
@@ -476,15 +484,15 @@ function rP6(){const s=S.session;if(s.i>=s.list.length)return finishQ(6);const i
     ${g?`<button class="primary" id="p6n">다음 지문</button>`:`<button class="primary" id="p6g" ${Object.keys(s.ans).length===q.items.length?'':'disabled'}>채점하기</button>`}</div>`;
   V.querySelectorAll('.choice').forEach(b=>b.onclick=()=>{if(s.graded)return;s.ans[+b.dataset.k]=+b.dataset.i;const y=window.scrollY;rP6();window.scrollTo(0,y)});
   pq.onclick=()=>finishQ(6);
-  if(g)p6n.onclick=()=>{const nx=pick(6,3).filter(x=>x!==id)[0];if(!nx)return finishQ(6);s.list.push(nx);s.i++;s.ans={};s.graded=false;rP6();window.scrollTo(0,0)};
-  else p6g.onclick=()=>{s.graded=true;const res=q.items.map((it,k)=>({type:it.type,ok:s.ans[k]===it.answer}));
-    res.forEach(r=>{s.total++;if(r.ok)s.ok++;adjustLv(6,q,r.ok)});recordQ(id,q,res);saveSettings();const y=window.scrollY;rP6();window.scrollTo(0,y)}}
+  if(g)p6n.onclick=()=>{const nx=(s.review?wrongIds(6):pick(6,3)).filter(x=>!s.list.includes(x))[0];if(!nx)return finishQ(6);s.list.push(nx);s.i++;s.ans={};s.graded=false;rP6();window.scrollTo(0,0)};
+  else p6g.onclick=()=>{s.graded=true;const res=q.items.map((it,k)=>({type:it.type,ok:s.ans[k]===it.answer,picked:s.ans[k],answer:it.answer,item:k}));
+    res.forEach(r=>{s.total++;if(r.ok)s.ok++;if(!s.review)adjustLv(6,q,r.ok)});recordQ(id,q,res,s.review);if(!s.review)saveSettings();const y=window.scrollY;rP6();window.scrollTo(0,y)}}
 function finishQ(part){const s=S.session;S.session=null;
   const n=part===5?Math.min(s.i+(s.picked!=null?1:0),s.list.length):s.total;const ok=s.ok;
   V.innerHTML=`<div class="stack"><div><div class="eyebrow">Part ${part} 세션 완료</div><h2>${n}문제 중 ${ok}개 정답${n?' · '+Math.round(ok/n*100)+'%':''}</h2></div>
   <div class="muted">현재 레벨 ${lvText(S.settings['lv'+part])}</div>
   <div class="row"><button class="primary" id="f1">한 번 더</button><button id="f2">약점 분석 보기</button></div></div>`;
-  f1.onclick=()=>part===5?startP5():startP6();f2.onclick=()=>location.hash='stats'}
+  f1.onclick=()=>part===5?startP5(s.review):startP6(s.review);f2.onclick=()=>location.hash='stats'}
 
 /* ---------- Claude API ---------- */
 let genCtl=null;
@@ -494,11 +502,24 @@ async function claude(prompt,signal){
     body:JSON.stringify({model:CFG.model||MODELS[0][0],max_tokens:6000,messages:[{role:'user',content:prompt}]})});
   const j=await r.json().catch(()=>({}));
   if(!r.ok)throw{code:r.status,message:(j.error&&j.error.message)||('HTTP '+r.status)};
-  return(j.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('')}
-function parseJSON(t){try{return JSON.parse(t)}catch{}const m=t.match(/```(?:json)?\s*([\s\S]*?)```/);if(m){try{return JSON.parse(m[1])}catch{}}
-  const st=[t.indexOf('['),t.indexOf('{')].filter(x=>x>=0);const s=Math.min(...st);const e=Math.max(t.lastIndexOf(']'),t.lastIndexOf('}'));
-  if(st.length&&e>s)return JSON.parse(t.slice(s,e+1));throw{code:'json',message:'JSON을 찾지 못했어'}}
-function validP5(x){return x&&typeof x.stem==='string'&&/-{3,}/.test(x.stem)&&Array.isArray(x.choices)&&x.choices.length===4&&x.choices.every(c=>typeof c==='string'&&c.trim())&&Number.isInteger(x.answer)&&x.answer>=0&&x.answer<4&&new Set(x.choices).size===4}
+  return{text:(j.content||[]).filter(c=>c.type==='text').map(c=>c.text).join(''),stop:j.stop_reason}}
+// 문자열 안을 건너뛰며 괄호 짝이 맞는 최상위 {...} 를 순서대로 뽑는다. 응답이 중간에 잘려도 완성된 문항은 살린다.
+function objectsIn(t){const out=[];let d=0,s=-1,str=false,bs=false;for(let i=0;i<t.length;i++){const c=t[i];
+  if(str){if(bs)bs=false;else if(c==='\\')bs=true;else if(c==='"')str=false;continue}
+  if(c==='"')str=true;else if(c==='{'){if(!d)s=i;d++}else if(c==='}'&&d){d--;if(!d){try{out.push(JSON.parse(t.slice(s,i+1)))}catch{}}}}return out}
+function parseJSON(t,want){try{return JSON.parse(t)}catch{}const m=t.match(/```(?:json)?\s*([\s\S]*?)```/);if(m){try{return JSON.parse(m[1])}catch{}}
+  const o=want==='array'?'[':'{',c=want==='array'?']':'}';const s=t.indexOf(o),e=t.lastIndexOf(c);if(s>=0&&e>s){try{return JSON.parse(t.slice(s,e+1))}catch{}}
+  const objs=objectsIn(s>=0?t.slice(s):t);if(objs.length)return want==='array'?objs:objs[0];
+  throw{code:'json',message:'응답 형식이 깨졌어'}}
+const okAns=a=>Number.isInteger(a)&&a>=0&&a<4;
+const uniq4=c=>Array.isArray(c)&&c.length===4&&c.every(x=>typeof x==='string'&&x.trim())&&new Set(c.map(x=>x.trim().toLowerCase())).size===4;
+function validP5(x){return!!x&&typeof x.stem==='string'&&(x.stem.match(/-{3,}/g)||[]).length===1&&uniq4(x.choices)&&okAns(x.answer)}
+// Part 6: 빈칸 [1]~[4] 각각 정확히 한 번, 문항 4개, 문장삽입 정확히 1개
+function validP6(x){if(!x||typeof x.passage!=='string'||!Array.isArray(x.items)||x.items.length!==4)return false;
+  if([1,2,3,4].some(n=>x.passage.split('['+n+']').length!==2)||/\[[05-9]\]/.test(x.passage))return false;
+  return x.items.filter(it=>it&&it.type==='문장삽입').length===1&&x.items.every(it=>it&&uniq4(it.choices)&&okAns(it.answer))}
+// 정답 위치는 코드에서 섞는다 (모델에게만 맡기면 한쪽으로 몰린다)
+function mix(choices,answer){const idx=shuffle([0,1,2,3]);return{choices:idx.map(i=>String(choices[i]).trim()),answer:idx.indexOf(answer)}}
 function genPrompt(part,lv,weak){
   const lvDesc={1:'Level 1 (target score ~600): common business vocabulary, clear grammar cues.',2:'Level 2 (target ~750): subtler grammar, collocations, distractors from the same word family.',3:'Level 3 (target 850+): advanced vocabulary, inversion, subjunctive, close-meaning distractors, long sentences.'}[lv];
   const focus=weak.length?`Give extra weight to these weak question types: ${weak.join(', ')}.`:'Mix the question types.';
@@ -507,7 +528,7 @@ function genPrompt(part,lv,weak){
 `Write 8 ORIGINAL TOEIC Part 5 (incomplete sentence) questions. ${lvDesc} ${focus}
 Allowed "type" values (Korean, use exactly): ${TYPES5.join(', ')}.
 Each question: one business-context English sentence with exactly one blank written as "-------", four answer choices, exactly one correct.
-Vary the correct position across A-D. Do not copy any published test item. Avoid repeating these existing stems:
+Do not copy any published test item. Choices are shuffled after you answer, so in "exp" name choices by the word itself, never by letter (A-D) or position. Avoid repeating these existing stems:
 ${existing||'(none)'}
 Reply with ONLY a JSON array of 8 objects, no other text:
 [{"type":"품사","stem":"The manager asked for a ------- review of the budget.","choices":["thorough","thoroughly","thoroughness","more thoroughly"],"answer":0,"exp":"명사 review를 꾸미는 형용사 자리라 thorough가 정답. 부사 thoroughly는 명사를 꾸밀 수 없어."}]
@@ -515,7 +536,7 @@ Reply with ONLY a JSON array of 8 objects, no other text:
 `Write 1 ORIGINAL TOEIC Part 6 text-completion set. ${lvDesc} ${focus}
 Text: an email, notice, memo, article or letter of 90-150 words with exactly four blanks marked [1], [2], [3], [4] in order. Exactly one of the four must be a sentence-insertion item (type "문장삽입") whose choices are four full sentences.
 Allowed "type" values (Korean, use exactly): ${TYPES6.join(', ')}.
-Vary the correct position across A-D. Do not copy any published test item. Avoid these existing titles:
+Do not copy any published test item. Choices are shuffled after you answer, so in "exp" name choices by the word itself, never by letter (A-D) or position. Avoid these existing titles:
 ${existing||'(none)'}
 Reply with ONLY one JSON object, no other text:
 {"title":"Email: Office Relocation","passage":"... [1] ... [2] ... [3] ... [4] ...","items":[{"type":"품사","choices":["a","b","c","d"],"answer":0,"exp":"한국어 해설 1~2문장 (반말)"}]}  (items has exactly 4 entries)`}
@@ -523,21 +544,22 @@ async function generate(part){if(!CFG.claudeKey)return;const lv=Math.round(S.set
   const out=document.getElementById('qgo'),btn=document.getElementById('qg'),stop=document.getElementById('qstop');
   btn.disabled=true;stop.hidden=false;out.hidden=false;out.textContent='Claude가 문제를 쓰는 중… (20~60초)';
   genCtl=new AbortController();stop.onclick=()=>genCtl.abort();
-  try{const res=parseJSON(await claude(genPrompt(part,lv,weak),genCtl.signal));let saved=0;const now=Date.now();
+  try{const{text,stop:reason}=await claude(genPrompt(part,lv,weak),genCtl.signal);const res=parseJSON(text,part===5?'array':'object');let saved=0,dropped=0;const now=Date.now();
     const rows=[];
-    if(part===5){for(const x of(Array.isArray(res)?res:[])){if(!validP5(x))continue;
-        rows.push({id:'c'+now.toString(36)+'-'+rows.length,part:5,level:lv,type:TYPES5.includes(x.type)?x.type:'어휘',stem:x.stem.trim(),choices:x.choices.map(String),answer:x.answer,exp:String(x.exp||''),title:null,passage:null,items:null,src:'claude',created:now+rows.length,seen:0,wrong:0})}}
-    else{const x=res||{};const items=Array.isArray(x.items)?x.items:[];
-      const okItems=items.length===4&&items.every(it=>Array.isArray(it.choices)&&it.choices.length===4&&Number.isInteger(it.answer)&&it.answer>=0&&it.answer<4);
-      if(okItems&&typeof x.passage==='string'&&/\[1\][\s\S]*\[2\][\s\S]*\[3\][\s\S]*\[4\]/.test(x.passage))
-        rows.push({id:'c'+now.toString(36),part:6,level:lv,type:null,stem:null,choices:null,answer:null,exp:null,title:String(x.title||'Part 6'),passage:x.passage,
-          items:items.map(it=>({type:TYPES6.includes(it.type)?it.type:'어휘',choices:it.choices.map(String),answer:it.answer,exp:String(it.exp||'')})),src:'claude',created:now,seen:0,wrong:0})}
+    if(part===5){for(const x of(Array.isArray(res)?res:[])){if(!validP5(x)){dropped++;continue}const m=mix(x.choices,x.answer);
+        rows.push({id:'c'+now.toString(36)+'-'+rows.length,part:5,level:lv,type:TYPES5.includes(x.type)?x.type:'어휘',stem:x.stem.trim(),choices:m.choices,answer:m.answer,exp:String(x.exp||''),title:null,passage:null,items:null,src:'claude',created:now+rows.length,seen:0,wrong:0})}}
+    else{const x=res||{};
+      if(validP6(x))rows.push({id:'c'+now.toString(36),part:6,level:lv,type:null,stem:null,choices:null,answer:null,exp:null,title:String(x.title||'Part 6'),passage:x.passage,
+          items:x.items.map(it=>({type:TYPES6.includes(it.type)?it.type:'어휘',...mix(it.choices,it.answer),exp:String(it.exp||'')})),src:'claude',created:now,seen:0,wrong:0});
+      else dropped++}
     if(rows.length){await upsertMany('questions',rows);for(const r of rows)S.qs.set(r.id,r);saved=rows.length}
-    out.textContent=saved?`${saved}개 저장했어 (레벨 ${lv}).`:'형식이 맞는 결과가 없어서 저장하지 않았어. 다시 눌러줘.';
+    // 해설에 "A가 정답" 처럼 보기 글자를 쓰면 섞은 뒤 틀린 말이 된다. 프롬프트에서 보기 글자 언급을 막아 둔다.
+    const cut=reason==='max_tokens'?' 응답이 길어서 잘렸어.':'';
+    out.textContent=saved?`${saved}개 저장했어 (레벨 ${lv}).${dropped?' 형식이 틀린 '+dropped+'개는 버렸어.':''}${cut}`:'형식이 맞는 결과가 없어서 저장하지 않았어.'+cut+' 다시 눌러줘.';
     toast(saved?'새 문제 '+saved+'개 저장':'저장된 문제 없음');setTimeout(()=>{if(!S.session&&S.view==='p'+part)rQuiz(part)},1200)}
-  catch(e){const m=e&&e.name==='AbortError'?'중지했어.':e.code===401?'API 키가 올바르지 않아. 설정에서 다시 넣어줘.':e.code===429?'요청 한도에 걸렸어. 잠시 후 다시 해줘.':e.code===529||e.code===503?'Claude 서버가 바빠. 잠시 후 다시 해줘.':e.code===400&&/model/i.test(e.message||'')?'모델 이름이 맞지 않아. 설정에서 다른 모델을 골라줘.':'생성하지 못했어: '+String(e.message||e.code||'오류').slice(0,120);
+  catch(e){const m=e&&e.name==='AbortError'?'중지했어.':e.code===401?'API 키가 올바르지 않아. 설정에서 다시 넣어줘.':e.code===429?'요청 한도에 걸렸어. 잠시 후 다시 해줘.':e.code===529||e.code===503?'Claude 서버가 바빠. 잠시 후 다시 해줘.':(e.code===400||e.code===404)&&/model/i.test(e.message||'')?'모델 이름이 맞지 않아. 설정에서 다른 모델을 골라줘.':e.code==='json'?'응답 형식이 깨졌어. 다시 눌러줘.':'생성하지 못했어: '+String(e.message||e.code||'오류').slice(0,120);
     out.textContent=m}
-  finally{btn.disabled=false;stop.hidden=true}}
+  finally{genCtl=null;btn.disabled=false;stop.hidden=true}}
 
 /* ---------- 분석 ---------- */
 function rStats(){const bars=part=>{const st=typeStats(part);const rows=Object.entries(st).sort((a,b)=>a[1].c/a[1].n-b[1].c/b[1].n);
@@ -626,7 +648,8 @@ function rDeck(){const st={new:'새',learning:'학습 중',mature:'장기'};
 }
 
 /* ---------- 시작 ---------- */
-async function refresh(force){if(!TOK||S.session)return;await flush();try{await loadAll();if(force)toast('최신 기록을 불러왔어');render()}catch(e){if(e.code==='auth'){render()}else{syncLabel();if(force)toast(errText(e))}}}
+// 문제 생성 중(genCtl)에는 화면을 다시 그리지 않는다. 다시 그리면 진행 표시가 사라지고 버튼이 다시 켜진다.
+async function refresh(force){if(!TOK||S.session||genCtl)return;await flush();try{await loadAll();if(force)toast('최신 기록을 불러왔어');render()}catch(e){if(e.code==='auth'){render()}else{syncLabel();if(force)toast(errText(e))}}}
 async function start(){if(!CFG.url||!TOK)return render();try{await loadAll();flush()}catch(e){if(e.code==='auth')return render();
   if(loadSnap()){render();clearTimeout(flushT);flushT=setTimeout(flush,20000);return}
   setSync('불러오기 실패');V.innerHTML=`<div class="note">데이터를 불러오지 못했어 (${esc(e.code||'')}). ${esc(String(e.message||'').slice(0,120))}<br><button class="sm" onclick="start()">다시 시도</button></div>`;return}render()}

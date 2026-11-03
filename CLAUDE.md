@@ -20,6 +20,8 @@
   - **days는 행을 직접 upsert하지 않는다.** 앱(`bumpDay`)과 위젯 모두 증가분만 `rpc/bump_day`로 보낸다. 통째로 쓰면 앱·위젯이 서로 기록을 지운다.
 - 앱의 모든 쓰기는 `enqueue` 대기열(localStorage `omr.out`)을 거친다. 오프라인이면 남겨 두고 연결되면 보낸다. 네트워크 오류로 세션(`omr.tok`)이나 위젯 키체인 비밀번호를 지우지 않는다(4xx 거절일 때만).
 - `settings(lv5, lv6, daily_new)` — 행 하나
+- `attempts(id, at, qid, part, item, type, level, picked, answer, ok, review)` — P5/P6 풀이 1회마다 고른 보기. 계속 늘어나서 `loadAll`에서 읽지 않고 분석할 때 최근 것만 조회한다. `review`는 오답 다시 풀기(레벨 조정 안 함).
+- 생성 문제는 `validP5`/`validP6`를 통과한 것만 저장하고, 보기 순서는 `mix()`로 코드에서 섞는다. 그래서 해설에 보기 글자(A~D)를 쓰지 않게 프롬프트로 막아 둔다.
 - PostgREST 일괄 upsert는 모든 행의 키가 같아야 한다 (seed.json의 questions는 빈 필드를 null로 채워 둠).
 
 ## 지켜야 할 규칙
