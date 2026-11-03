@@ -1,0 +1,80 @@
+-- OMR 토익 · Supabase 스키마
+-- Supabase 대시보드 > SQL Editor 에 통째로 붙여 넣고 Run.
+-- 모든 행은 user_id 로 묶이고, RLS 로 "로그인한 본인 행만" 읽고 쓸 수 있다.
+-- 여러 번 실행해도 안전하다 (if not exists / drop policy if exists).
+
+create table if not exists public.words (
+  user_id  uuid   not null default auth.uid() references auth.users on delete cascade,
+  id       text   not null,
+  w        text   not null,          -- 영어 단어
+  pos      text   default '',        -- 품사 (n, v, a, ad, prep ...)
+  ko       text   not null,          -- 뜻
+  ex       text   default '',        -- 예문
+  lv       smallint default 1,       -- 1 기본 · 2 중급 · 3 고난도
+  created  bigint default 0,         -- ms epoch, 새 단어 출제 순서
+  primary key (user_id, id)
+);
+
+create table if not exists public.srs (
+  user_id  uuid   not null default auth.uid() references auth.users on delete cascade,
+  word_id  text   not null,
+  ef       real   default 2.5,       -- SM-2 easiness factor
+  reps     int    default 0,
+  ivl      int    default 0,         -- 복습 간격(일). 0 = 10분 뒤 재출제
+  lapses   int    default 0,         -- 틀린 횟수
+  due      bigint default 0,         -- 다음 복습 시각 (ms epoch)
+  last     bigint default 0,
+  primary key (user_id, word_id)
+);
+
+create table if not exists public.questions (
+  user_id  uuid   not null default auth.uid() references auth.users on delete cascade,
+  id       text   not null,
+  part     smallint not null,        -- 5 또는 6
+  level    smallint default 1,
+  type     text,                     -- Part 5 유형 (품사, 어휘 ...)
+  stem     text,                     -- Part 5 문장, 빈칸은 -------
+  choices  jsonb,                    -- Part 5 보기 4개
+  answer   smallint,                 -- Part 5 정답 0~3
+  exp      text,                     -- Part 5 해설
+  title    text,                     -- Part 6 지문 제목
+  passage  text,                     -- Part 6 지문, 빈칸은 [1]~[4]
+  items    jsonb,                    -- Part 6 문항 [{type, choices, answer, exp}]
+  src      text,                     -- seed | claude | manual
+  created  bigint default 0,
+  seen     int    default 0,
+  wrong    int    default 0,
+  last_ok  boolean,
+  last_at  bigint,
+  primary key (user_id, id)
+);
+
+create table if not exists public.days (
+  user_id        uuid not null default auth.uid() references auth.users on delete cascade,
+  date           text not null,      -- YYYY-MM-DD (기기 현지 날짜)
+  words_reviewed int  default 0,
+  words_new      int  default 0,
+  words_again    int  default 0,
+  q              jsonb default '{}'::jsonb,  -- {"5:품사": {"n":3,"c":2}, ...}
+  primary key (user_id, date)
+);
+
+create table if not exists public.settings (
+  user_id   uuid primary key default auth.uid() references auth.users on delete cascade,
+  lv5       real default 1.5,
+  lv6       real default 1.5,
+  daily_new int  default 15
+);
+
+do $$
+declare t text;
+begin
+  foreach t in array array['words','srs','questions','days','settings'] loop
+    execute format('alter table public.%I enable row level security', t);
+    execute format('drop policy if exists own_rows on public.%I', t);
+    execute format('create policy own_rows on public.%I for all to authenticated
+                    using (user_id = auth.uid()) with check (user_id = auth.uid())', t);
+    execute format('grant select, insert, update, delete on public.%I to authenticated', t);
+    execute format('revoke all on public.%I from anon', t);
+  end loop;
+end $$;

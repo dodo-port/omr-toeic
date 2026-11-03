@@ -1,0 +1,1128 @@
+{
+ "words": [
+  {
+   "id": "seed-appointment",
+   "w": "appointment",
+   "pos": "n",
+   "ko": "약속, 임명",
+   "ex": "Please call to reschedule your appointment.",
+   "lv": 1,
+   "created": 1762128000000
+  },
+  {
+   "id": "seed-available",
+   "w": "available",
+   "pos": "a",
+   "ko": "이용 가능한, 시간이 되는",
+   "ex": "The conference room is available after 3 P.M.",
+   "lv": 1,
+   "created": 1762128000001
+  },
+  {
+   "id": "seed-budget",
+   "w": "budget",
+   "pos": "n",
+   "ko": "예산",
+   "ex": "The project stayed within budget.",
+   "lv": 1,
+   "created": 1762128000002
+  },
+  {
+   "id": "seed-confirm",
+   "w": "confirm",
+   "pos": "v",
+   "ko": "확인하다, 확정하다",
+   "ex": "Please confirm your attendance by email.",
+   "lv": 1,
+   "created": 1762128000003
+  },
+  {
+   "id": "seed-deadline",
+   "w": "deadline",
+   "pos": "n",
+   "ko": "마감일",
+   "ex": "The deadline for applications is June 30.",
+   "lv": 1,
+   "created": 1762128000004
+  },
+  {
+   "id": "seed-department",
+   "w": "department",
+   "pos": "n",
+   "ko": "부서",
+   "ex": "She transferred to the accounting department.",
+   "lv": 1,
+   "created": 1762128000005
+  },
+  {
+   "id": "seed-invoice",
+   "w": "invoice",
+   "pos": "n",
+   "ko": "송장, 청구서",
+   "ex": "The invoice must be paid within 30 days.",
+   "lv": 1,
+   "created": 1762128000006
+  },
+  {
+   "id": "seed-purchase",
+   "w": "purchase",
+   "pos": "v",
+   "ko": "구매하다",
+   "ex": "Customers can purchase tickets online.",
+   "lv": 1,
+   "created": 1762128000007
+  },
+  {
+   "id": "seed-schedule",
+   "w": "schedule",
+   "pos": "v",
+   "ko": "일정을 잡다",
+   "ex": "The meeting is scheduled for Monday.",
+   "lv": 1,
+   "created": 1762128000008
+  },
+  {
+   "id": "seed-shipment",
+   "w": "shipment",
+   "pos": "n",
+   "ko": "배송, 선적물",
+   "ex": "The shipment arrived two days late.",
+   "lv": 1,
+   "created": 1762128000009
+  },
+  {
+   "id": "seed-supply",
+   "w": "supply",
+   "pos": "n",
+   "ko": "공급(품), 비품",
+   "ex": "Office supplies are kept in the storage room.",
+   "lv": 1,
+   "created": 1762128000010
+  },
+  {
+   "id": "seed-reservation",
+   "w": "reservation",
+   "pos": "n",
+   "ko": "예약",
+   "ex": "I'd like to make a reservation for four.",
+   "lv": 1,
+   "created": 1762128000011
+  },
+  {
+   "id": "seed-attend",
+   "w": "attend",
+   "pos": "v",
+   "ko": "참석하다",
+   "ex": "All managers must attend the training.",
+   "lv": 1,
+   "created": 1762128000012
+  },
+  {
+   "id": "seed-contract",
+   "w": "contract",
+   "pos": "n",
+   "ko": "계약(서)",
+   "ex": "Both parties signed the contract yesterday.",
+   "lv": 1,
+   "created": 1762128000013
+  },
+  {
+   "id": "seed-delay",
+   "w": "delay",
+   "pos": "n",
+   "ko": "지연",
+   "ex": "We apologize for the delay in shipping.",
+   "lv": 1,
+   "created": 1762128000014
+  },
+  {
+   "id": "seed-estimate",
+   "w": "estimate",
+   "pos": "n",
+   "ko": "견적, 추정치",
+   "ex": "The contractor sent us a cost estimate.",
+   "lv": 1,
+   "created": 1762128000015
+  },
+  {
+   "id": "seed-refund",
+   "w": "refund",
+   "pos": "n",
+   "ko": "환불",
+   "ex": "You may request a full refund within 14 days.",
+   "lv": 1,
+   "created": 1762128000016
+  },
+  {
+   "id": "seed-require",
+   "w": "require",
+   "pos": "v",
+   "ko": "요구하다, 필요로 하다",
+   "ex": "The position requires two years of experience.",
+   "lv": 1,
+   "created": 1762128000017
+  },
+  {
+   "id": "seed-customer",
+   "w": "customer",
+   "pos": "n",
+   "ko": "고객",
+   "ex": "Customer satisfaction is our top priority.",
+   "lv": 1,
+   "created": 1762128000018
+  },
+  {
+   "id": "seed-employee",
+   "w": "employee",
+   "pos": "n",
+   "ko": "직원",
+   "ex": "New employees receive a welcome packet.",
+   "lv": 1,
+   "created": 1762128000019
+  },
+  {
+   "id": "seed-accommodate",
+   "w": "accommodate",
+   "pos": "v",
+   "ko": "수용하다, 편의를 제공하다",
+   "ex": "The hall can accommodate up to 300 guests.",
+   "lv": 2,
+   "created": 1762128000020
+  },
+  {
+   "id": "seed-allocate",
+   "w": "allocate",
+   "pos": "v",
+   "ko": "할당하다",
+   "ex": "Extra funds were allocated to marketing.",
+   "lv": 2,
+   "created": 1762128000021
+  },
+  {
+   "id": "seed-comply",
+   "w": "comply",
+   "pos": "v",
+   "ko": "(with) 준수하다",
+   "ex": "All staff must comply with safety rules.",
+   "lv": 2,
+   "created": 1762128000022
+  },
+  {
+   "id": "seed-compensate",
+   "w": "compensate",
+   "pos": "v",
+   "ko": "보상하다",
+   "ex": "Employees will be compensated for overtime.",
+   "lv": 2,
+   "created": 1762128000023
+  },
+  {
+   "id": "seed-conduct",
+   "w": "conduct",
+   "pos": "v",
+   "ko": "실시하다, 수행하다",
+   "ex": "The firm conducted a customer survey.",
+   "lv": 2,
+   "created": 1762128000024
+  },
+  {
+   "id": "seed-consecutive",
+   "w": "consecutive",
+   "pos": "a",
+   "ko": "연속적인",
+   "ex": "Sales rose for three consecutive quarters.",
+   "lv": 2,
+   "created": 1762128000025
+  },
+  {
+   "id": "seed-designate",
+   "w": "designate",
+   "pos": "v",
+   "ko": "지정하다",
+   "ex": "Smoking is allowed only in designated areas.",
+   "lv": 2,
+   "created": 1762128000026
+  },
+  {
+   "id": "seed-eligible",
+   "w": "eligible",
+   "pos": "a",
+   "ko": "자격이 있는",
+   "ex": "Full-time staff are eligible for the bonus.",
+   "lv": 2,
+   "created": 1762128000027
+  },
+  {
+   "id": "seed-expedite",
+   "w": "expedite",
+   "pos": "v",
+   "ko": "신속히 처리하다",
+   "ex": "We paid extra to expedite the delivery.",
+   "lv": 2,
+   "created": 1762128000028
+  },
+  {
+   "id": "seed-implement",
+   "w": "implement",
+   "pos": "v",
+   "ko": "시행하다",
+   "ex": "The new policy will be implemented next month.",
+   "lv": 2,
+   "created": 1762128000029
+  },
+  {
+   "id": "seed-inquiry",
+   "w": "inquiry",
+   "pos": "n",
+   "ko": "문의",
+   "ex": "We received many inquiries about the sale.",
+   "lv": 2,
+   "created": 1762128000030
+  },
+  {
+   "id": "seed-mandatory",
+   "w": "mandatory",
+   "pos": "a",
+   "ko": "의무적인",
+   "ex": "Attendance at the seminar is mandatory.",
+   "lv": 2,
+   "created": 1762128000031
+  },
+  {
+   "id": "seed-negotiate",
+   "w": "negotiate",
+   "pos": "v",
+   "ko": "협상하다",
+   "ex": "They negotiated a lower rent.",
+   "lv": 2,
+   "created": 1762128000032
+  },
+  {
+   "id": "seed-outstanding",
+   "w": "outstanding",
+   "pos": "a",
+   "ko": "미지불된; 뛰어난",
+   "ex": "Please settle your outstanding balance.",
+   "lv": 2,
+   "created": 1762128000033
+  },
+  {
+   "id": "seed-postpone",
+   "w": "postpone",
+   "pos": "v",
+   "ko": "연기하다",
+   "ex": "The launch was postponed until May.",
+   "lv": 2,
+   "created": 1762128000034
+  },
+  {
+   "id": "seed-preliminary",
+   "w": "preliminary",
+   "pos": "a",
+   "ko": "예비의",
+   "ex": "Preliminary results look promising.",
+   "lv": 2,
+   "created": 1762128000035
+  },
+  {
+   "id": "seed-reimburse",
+   "w": "reimburse",
+   "pos": "v",
+   "ko": "상환하다, 변제하다",
+   "ex": "Travel expenses will be reimbursed.",
+   "lv": 2,
+   "created": 1762128000036
+  },
+  {
+   "id": "seed-renovation",
+   "w": "renovation",
+   "pos": "n",
+   "ko": "보수, 개조",
+   "ex": "The lobby is closed for renovation.",
+   "lv": 2,
+   "created": 1762128000037
+  },
+  {
+   "id": "seed-subsequent",
+   "w": "subsequent",
+   "pos": "a",
+   "ko": "이후의, 그 다음의",
+   "ex": "Subsequent meetings will be held online.",
+   "lv": 2,
+   "created": 1762128000038
+  },
+  {
+   "id": "seed-tentative",
+   "w": "tentative",
+   "pos": "a",
+   "ko": "잠정적인",
+   "ex": "We set a tentative date for the event.",
+   "lv": 2,
+   "created": 1762128000039
+  },
+  {
+   "id": "seed-adjacent",
+   "w": "adjacent",
+   "pos": "a",
+   "ko": "(to) 인접한",
+   "ex": "Parking is available adjacent to the building.",
+   "lv": 3,
+   "created": 1762128000040
+  },
+  {
+   "id": "seed-commensurate",
+   "w": "commensurate",
+   "pos": "a",
+   "ko": "(with) 상응하는",
+   "ex": "Pay is commensurate with experience.",
+   "lv": 3,
+   "created": 1762128000041
+  },
+  {
+   "id": "seed-contingent",
+   "w": "contingent",
+   "pos": "a",
+   "ko": "(on) ~에 달린, 조건부의",
+   "ex": "The offer is contingent on a background check.",
+   "lv": 3,
+   "created": 1762128000042
+  },
+  {
+   "id": "seed-discrepancy",
+   "w": "discrepancy",
+   "pos": "n",
+   "ko": "불일치, 차이",
+   "ex": "Auditors found a discrepancy in the records.",
+   "lv": 3,
+   "created": 1762128000043
+  },
+  {
+   "id": "seed-exemplary",
+   "w": "exemplary",
+   "pos": "a",
+   "ko": "모범적인",
+   "ex": "She was praised for her exemplary service.",
+   "lv": 3,
+   "created": 1762128000044
+  },
+  {
+   "id": "seed-forthcoming",
+   "w": "forthcoming",
+   "pos": "a",
+   "ko": "곧 있을; 기꺼이 알려주는",
+   "ex": "Details will be shared in a forthcoming memo.",
+   "lv": 3,
+   "created": 1762128000045
+  },
+  {
+   "id": "seed-imperative",
+   "w": "imperative",
+   "pos": "a",
+   "ko": "반드시 해야 하는",
+   "ex": "It is imperative that the data be backed up.",
+   "lv": 3,
+   "created": 1762128000046
+  },
+  {
+   "id": "seed-inadvertently",
+   "w": "inadvertently",
+   "pos": "ad",
+   "ko": "무심코, 실수로",
+   "ex": "The file was inadvertently deleted.",
+   "lv": 3,
+   "created": 1762128000047
+  },
+  {
+   "id": "seed-meticulous",
+   "w": "meticulous",
+   "pos": "a",
+   "ko": "꼼꼼한",
+   "ex": "He keeps meticulous financial records.",
+   "lv": 3,
+   "created": 1762128000048
+  },
+  {
+   "id": "seed-notwithstanding",
+   "w": "notwithstanding",
+   "pos": "prep",
+   "ko": "~에도 불구하고",
+   "ex": "Notwithstanding the delay, the project succeeded.",
+   "lv": 3,
+   "created": 1762128000049
+  },
+  {
+   "id": "seed-prerequisite",
+   "w": "prerequisite",
+   "pos": "n",
+   "ko": "전제 조건, 필수 과목",
+   "ex": "A degree is a prerequisite for the role.",
+   "lv": 3,
+   "created": 1762128000050
+  },
+  {
+   "id": "seed-procure",
+   "w": "procure",
+   "pos": "v",
+   "ko": "조달하다, 구하다",
+   "ex": "The team procured new equipment.",
+   "lv": 3,
+   "created": 1762128000051
+  },
+  {
+   "id": "seed-prudent",
+   "w": "prudent",
+   "pos": "a",
+   "ko": "신중한",
+   "ex": "It would be prudent to wait for the report.",
+   "lv": 3,
+   "created": 1762128000052
+  },
+  {
+   "id": "seed-stringent",
+   "w": "stringent",
+   "pos": "a",
+   "ko": "엄격한",
+   "ex": "The factory meets stringent quality standards.",
+   "lv": 3,
+   "created": 1762128000053
+  },
+  {
+   "id": "seed-substantially",
+   "w": "substantially",
+   "pos": "ad",
+   "ko": "상당히",
+   "ex": "Costs have increased substantially.",
+   "lv": 3,
+   "created": 1762128000054
+  },
+  {
+   "id": "seed-succinct",
+   "w": "succinct",
+   "pos": "a",
+   "ko": "간결한",
+   "ex": "Keep your summary succinct.",
+   "lv": 3,
+   "created": 1762128000055
+  },
+  {
+   "id": "seed-unprecedented",
+   "w": "unprecedented",
+   "pos": "a",
+   "ko": "전례 없는",
+   "ex": "The company saw unprecedented growth.",
+   "lv": 3,
+   "created": 1762128000056
+  },
+  {
+   "id": "seed-viable",
+   "w": "viable",
+   "pos": "a",
+   "ko": "실행 가능한",
+   "ex": "The plan is not financially viable.",
+   "lv": 3,
+   "created": 1762128000057
+  },
+  {
+   "id": "seed-waive",
+   "w": "waive",
+   "pos": "v",
+   "ko": "면제하다, 포기하다",
+   "ex": "The bank agreed to waive the fee.",
+   "lv": 3,
+   "created": 1762128000058
+  },
+  {
+   "id": "seed-discontinue",
+   "w": "discontinue",
+   "pos": "v",
+   "ko": "중단하다, 단종하다",
+   "ex": "The model will be discontinued next year.",
+   "lv": 3,
+   "created": 1762128000059
+  }
+ ],
+ "questions": [
+  {
+   "id": "seed-p5-01",
+   "part": 5,
+   "level": 1,
+   "type": "전치사",
+   "stem": "Please submit your expense report ------- Friday.",
+   "choices": [
+    "by",
+    "until",
+    "since",
+    "within"
+   ],
+   "answer": 0,
+   "exp": "'금요일까지 (완료)'는 기한을 나타내는 by. until은 '그때까지 계속'이라는 지속에 써.",
+   "title": null,
+   "passage": null,
+   "items": null,
+   "src": "seed",
+   "created": 0,
+   "seen": 0,
+   "wrong": 0
+  },
+  {
+   "id": "seed-p5-02",
+   "part": 5,
+   "level": 1,
+   "type": "동사 형태·시제",
+   "stem": "Ms. Lee is responsible for ------- new employees.",
+   "choices": [
+    "train",
+    "trains",
+    "training",
+    "trained"
+   ],
+   "answer": 2,
+   "exp": "전치사 for 뒤에는 명사나 동명사가 와야 해서 training. 목적어 new employees를 취할 수 있는 것도 동명사.",
+   "title": null,
+   "passage": null,
+   "items": null,
+   "src": "seed",
+   "created": 1,
+   "seen": 0,
+   "wrong": 0
+  },
+  {
+   "id": "seed-p5-03",
+   "part": 5,
+   "level": 1,
+   "type": "비교",
+   "stem": "The new printer is much ------- than the old one.",
+   "choices": [
+    "fast",
+    "faster",
+    "fastest",
+    "fastly"
+   ],
+   "answer": 1,
+   "exp": "than이 있으니 비교급 faster. much는 비교급 강조 부사. fastly라는 단어는 없어.",
+   "title": null,
+   "passage": null,
+   "items": null,
+   "src": "seed",
+   "created": 2,
+   "seen": 0,
+   "wrong": 0
+  },
+  {
+   "id": "seed-p5-04",
+   "part": 5,
+   "level": 1,
+   "type": "접속사·접속부사",
+   "stem": "------- the weather was bad, the event was held outdoors.",
+   "choices": [
+    "Although",
+    "Despite",
+    "Because",
+    "However"
+   ],
+   "answer": 0,
+   "exp": "뒤에 절(주어+동사)이 오고 내용이 역접이라 Although. Despite는 전치사라 명사만 받아.",
+   "title": null,
+   "passage": null,
+   "items": null,
+   "src": "seed",
+   "created": 3,
+   "seen": 0,
+   "wrong": 0
+  },
+  {
+   "id": "seed-p5-05",
+   "part": 5,
+   "level": 1,
+   "type": "품사",
+   "stem": "The marketing team will ------- the results at next week's meeting.",
+   "choices": [
+    "present",
+    "presence",
+    "presently",
+    "presentable"
+   ],
+   "answer": 0,
+   "exp": "조동사 will 뒤에는 동사원형이 와야 하니 present.",
+   "title": null,
+   "passage": null,
+   "items": null,
+   "src": "seed",
+   "created": 4,
+   "seen": 0,
+   "wrong": 0
+  },
+  {
+   "id": "seed-p5-06",
+   "part": 5,
+   "level": 1,
+   "type": "수일치·태",
+   "stem": "Each of the applicants ------- interviewed by two managers.",
+   "choices": [
+    "were",
+    "are",
+    "was",
+    "have been"
+   ],
+   "answer": 2,
+   "exp": "주어는 Each(단수)라서 단수 동사. 과거 시제 was가 정답. of the applicants에 속으면 안 돼.",
+   "title": null,
+   "passage": null,
+   "items": null,
+   "src": "seed",
+   "created": 5,
+   "seen": 0,
+   "wrong": 0
+  },
+  {
+   "id": "seed-p5-07",
+   "part": 5,
+   "level": 2,
+   "type": "접속사·접속부사",
+   "stem": "The contract will be renewed automatically ------- either party requests otherwise.",
+   "choices": [
+    "unless",
+    "if",
+    "despite",
+    "whereas"
+   ],
+   "answer": 0,
+   "exp": "'한쪽이 달리 요청하지 않는 한 자동 갱신' 의미라 unless. despite는 전치사라 절을 못 받아.",
+   "title": null,
+   "passage": null,
+   "items": null,
+   "src": "seed",
+   "created": 6,
+   "seen": 0,
+   "wrong": 0
+  },
+  {
+   "id": "seed-p5-08",
+   "part": 5,
+   "level": 2,
+   "type": "품사",
+   "stem": "Mr. Park's proposal was ------- approved by the board.",
+   "choices": [
+    "unanimous",
+    "unanimously",
+    "unanimity",
+    "unanimousness"
+   ],
+   "answer": 1,
+   "exp": "be + p.p. 사이에서 동사 approved를 꾸미는 부사 자리라 unanimously.",
+   "title": null,
+   "passage": null,
+   "items": null,
+   "src": "seed",
+   "created": 7,
+   "seen": 0,
+   "wrong": 0
+  },
+  {
+   "id": "seed-p5-09",
+   "part": 5,
+   "level": 2,
+   "type": "관계사",
+   "stem": "Employees ------- wish to take part in the workshop should register by Monday.",
+   "choices": [
+    "whom",
+    "which",
+    "who",
+    "whose"
+   ],
+   "answer": 2,
+   "exp": "선행사가 사람(Employees)이고 뒤에 주어가 빠진 절(wish ...)이라 주격 관계대명사 who.",
+   "title": null,
+   "passage": null,
+   "items": null,
+   "src": "seed",
+   "created": 8,
+   "seen": 0,
+   "wrong": 0
+  },
+  {
+   "id": "seed-p5-10",
+   "part": 5,
+   "level": 2,
+   "type": "동사 형태·시제",
+   "stem": "By the time the director arrives, the staff ------- the conference room.",
+   "choices": [
+    "prepares",
+    "will have prepared",
+    "prepared",
+    "has prepared"
+   ],
+   "answer": 1,
+   "exp": "By the time + 현재시제(미래 의미)면 주절은 미래완료 will have prepared.",
+   "title": null,
+   "passage": null,
+   "items": null,
+   "src": "seed",
+   "created": 9,
+   "seen": 0,
+   "wrong": 0
+  },
+  {
+   "id": "seed-p5-11",
+   "part": 5,
+   "level": 2,
+   "type": "어휘",
+   "stem": "Please ------- the attached file for details on the new policy.",
+   "choices": [
+    "refer",
+    "consult",
+    "look",
+    "inform"
+   ],
+   "answer": 1,
+   "exp": "타동사로 바로 목적어를 받는 consult(참고하다). refer와 look은 to/at이 필요해.",
+   "title": null,
+   "passage": null,
+   "items": null,
+   "src": "seed",
+   "created": 10,
+   "seen": 0,
+   "wrong": 0
+  },
+  {
+   "id": "seed-p5-12",
+   "part": 5,
+   "level": 2,
+   "type": "대명사",
+   "stem": "Ms. Kim prefers to review the quarterly reports -------.",
+   "choices": [
+    "she",
+    "her",
+    "hers",
+    "herself"
+   ],
+   "answer": 3,
+   "exp": "문장 성분이 다 갖춰진 뒤 '직접, 혼자서'를 뜻하는 강조 용법 재귀대명사 herself.",
+   "title": null,
+   "passage": null,
+   "items": null,
+   "src": "seed",
+   "created": 11,
+   "seen": 0,
+   "wrong": 0
+  },
+  {
+   "id": "seed-p5-13",
+   "part": 5,
+   "level": 3,
+   "type": "전치사",
+   "stem": "------- the unexpected rise in material costs, the project was completed within budget.",
+   "choices": [
+    "Notwithstanding",
+    "Although",
+    "Even if",
+    "Whereas"
+   ],
+   "answer": 0,
+   "exp": "뒤에 명사구만 있으니 전치사 Notwithstanding(~에도 불구하고). 나머지는 접속사라 절이 필요해.",
+   "title": null,
+   "passage": null,
+   "items": null,
+   "src": "seed",
+   "created": 12,
+   "seen": 0,
+   "wrong": 0
+  },
+  {
+   "id": "seed-p5-14",
+   "part": 5,
+   "level": 3,
+   "type": "특수구문",
+   "stem": "Only after the audit was completed ------- the discrepancy in the accounts.",
+   "choices": [
+    "the manager noticed",
+    "did the manager notice",
+    "the manager did notice",
+    "noticed the manager"
+   ],
+   "answer": 1,
+   "exp": "Only + 부사절이 문두에 오면 주절이 도치돼서 did + 주어 + 동사원형 어순.",
+   "title": null,
+   "passage": null,
+   "items": null,
+   "src": "seed",
+   "created": 13,
+   "seen": 0,
+   "wrong": 0
+  },
+  {
+   "id": "seed-p5-15",
+   "part": 5,
+   "level": 3,
+   "type": "어휘",
+   "stem": "Salary will be ------- with experience and qualifications.",
+   "choices": [
+    "commensurate",
+    "contingent",
+    "adjacent",
+    "eligible"
+   ],
+   "answer": 0,
+   "exp": "be commensurate with(~에 상응하는)가 굳어진 표현. contingent는 on, adjacent는 to, eligible은 for와 어울려.",
+   "title": null,
+   "passage": null,
+   "items": null,
+   "src": "seed",
+   "created": 14,
+   "seen": 0,
+   "wrong": 0
+  },
+  {
+   "id": "seed-p5-16",
+   "part": 5,
+   "level": 3,
+   "type": "특수구문",
+   "stem": "Had the client ------- the terms earlier, the agreement would have been signed last month.",
+   "choices": [
+    "accept",
+    "accepts",
+    "accepted",
+    "accepting"
+   ],
+   "answer": 2,
+   "exp": "If가 생략된 가정법 과거완료 도치 Had + 주어 + p.p.라서 accepted.",
+   "title": null,
+   "passage": null,
+   "items": null,
+   "src": "seed",
+   "created": 15,
+   "seen": 0,
+   "wrong": 0
+  },
+  {
+   "id": "seed-p5-17",
+   "part": 5,
+   "level": 3,
+   "type": "동사 형태·시제",
+   "stem": "The board insisted that the new safety regulations ------- immediately.",
+   "choices": [
+    "be implemented",
+    "are implemented",
+    "were implemented",
+    "implementing"
+   ],
+   "answer": 0,
+   "exp": "insist(주장·요구) 뒤 that절은 당위의 (should) 동사원형. 규정이 시행'되는' 것이니 수동 be implemented.",
+   "title": null,
+   "passage": null,
+   "items": null,
+   "src": "seed",
+   "created": 16,
+   "seen": 0,
+   "wrong": 0
+  },
+  {
+   "id": "seed-p5-18",
+   "part": 5,
+   "level": 3,
+   "type": "어휘",
+   "stem": "The training session was so ------- that most participants felt well prepared.",
+   "choices": [
+    "comprehend",
+    "comprehensive",
+    "comprehensible",
+    "comprehension"
+   ],
+   "answer": 1,
+   "exp": "'포괄적인, 종합적인' 교육이라는 의미라 comprehensive. comprehensible은 '이해할 수 있는'이라 문맥이 어색해.",
+   "title": null,
+   "passage": null,
+   "items": null,
+   "src": "seed",
+   "created": 17,
+   "seen": 0,
+   "wrong": 0
+  },
+  {
+   "id": "seed-p6-1",
+   "part": 6,
+   "level": 1,
+   "type": null,
+   "stem": null,
+   "choices": null,
+   "answer": null,
+   "exp": null,
+   "title": "Email: Parking Lot Repairs",
+   "passage": "To: All Staff\nSubject: Parking Lot Repairs\n\nPlease be aware that the north parking lot will be closed for repairs from May 3 to May 7. During this time, employees [1] in the south lot or on Grand Street. [2] We apologize for the [3]. If you have any questions, please contact the facilities office [4] extension 214.",
+   "items": [
+    {
+     "type": "동사 형태·시제",
+     "choices": [
+      "park",
+      "should park",
+      "parked",
+      "parking"
+     ],
+     "answer": 1,
+     "exp": "주어 employees 뒤에 동사가 필요하고, 공지 내용이라 의무·권고의 should park."
+    },
+    {
+     "type": "문장삽입",
+     "choices": [
+      "The repairs were completed last year.",
+      "Street parking on Grand Street is free after 6 P.M.",
+      "Our cafeteria menu has changed.",
+      "Please submit your timesheets."
+     ],
+     "answer": 1,
+     "exp": "바로 앞에서 Grand Street 주차를 안내했으니 그 거리의 주차 정보가 이어지는 게 자연스러워."
+    },
+    {
+     "type": "품사",
+     "choices": [
+      "inconvenience",
+      "inconvenient",
+      "inconveniently",
+      "convenience"
+     ],
+     "answer": 0,
+     "exp": "정관사 the 뒤 명사 자리. apologize for the inconvenience는 공지문 단골 표현."
+    },
+    {
+     "type": "전치사",
+     "choices": [
+      "at",
+      "on",
+      "in",
+      "for"
+     ],
+     "answer": 0,
+     "exp": "내선 번호는 at extension ~ 으로 써."
+    }
+   ],
+   "src": "seed",
+   "created": 0,
+   "seen": 0,
+   "wrong": 0
+  },
+  {
+   "id": "seed-p6-2",
+   "part": 6,
+   "level": 2,
+   "type": null,
+   "stem": null,
+   "choices": null,
+   "answer": null,
+   "exp": null,
+   "title": "Notice: New Inventory System",
+   "passage": "Beginning next Monday, Halvorsen Logistics will switch to a new inventory management system. The system is designed to track shipments more [1] than our current software. All warehouse staff are required to complete an online training module [2] the system goes live. [3] Managers will receive a list of employees who have not yet [4] the module.",
+   "items": [
+    {
+     "type": "품사",
+     "choices": [
+      "accurate",
+      "accurately",
+      "accuracy",
+      "accuracies"
+     ],
+     "answer": 1,
+     "exp": "동사 track을 꾸미는 부사 자리. more ~ than 비교 구문 안에서도 품사는 그대로 부사 accurately."
+    },
+    {
+     "type": "접속사·접속부사",
+     "choices": [
+      "before",
+      "prior",
+      "until",
+      "by means of"
+     ],
+     "answer": 0,
+     "exp": "뒤에 절(the system goes live)이 오니 접속사. '시행 전에 완료'라는 의미로 before. prior는 prior to로 써야 해."
+    },
+    {
+     "type": "문장삽입",
+     "choices": [
+      "The module takes about 40 minutes to finish.",
+      "Our warehouse first opened in 1998.",
+      "Shipping rates will increase next year.",
+      "Thank you for attending the party."
+     ],
+     "answer": 0,
+     "exp": "앞 문장이 교육 모듈 이수 의무라서 모듈 소요 시간 안내가 이어지는 게 자연스러워."
+    },
+    {
+     "type": "동사 형태·시제",
+     "choices": [
+      "finished",
+      "finishing",
+      "finish",
+      "to finish"
+     ],
+     "answer": 0,
+     "exp": "have not yet + p.p. 현재완료라 finished."
+    }
+   ],
+   "src": "seed",
+   "created": 1,
+   "seen": 0,
+   "wrong": 0
+  },
+  {
+   "id": "seed-p6-3",
+   "part": 6,
+   "level": 3,
+   "type": null,
+   "stem": null,
+   "choices": null,
+   "answer": null,
+   "exp": null,
+   "title": "Letter: Application Outcome",
+   "passage": "Dear Mr. Okafor,\n\nThank you for your interest in the regional sales director position. After careful consideration, we have decided to offer the role to a candidate whose experience more closely matches our current needs. [1], we were highly impressed by your presentation and would like to keep your résumé on file. Should a [2] position become available, we will contact you directly. [3] We wish you every success in your [4] endeavors.\n\nSincerely,\nLena Varga, Human Resources",
+   "items": [
+    {
+     "type": "접속사·접속부사",
+     "choices": [
+      "Nevertheless",
+      "Therefore",
+      "Similarly",
+      "Otherwise"
+     ],
+     "answer": 0,
+     "exp": "앞은 불합격, 뒤는 긍정 평가라 역접 접속부사 Nevertheless."
+    },
+    {
+     "type": "품사",
+     "choices": [
+      "comparable",
+      "compared",
+      "comparing",
+      "comparably"
+     ],
+     "answer": 0,
+     "exp": "명사 position을 꾸미는 형용사 자리. '비슷한 직위'라는 뜻의 comparable."
+    },
+    {
+     "type": "문장삽입",
+     "choices": [
+      "Your interview has been rescheduled to Thursday.",
+      "Please note that this may take several months.",
+      "The director position has been eliminated.",
+      "We look forward to your first day."
+     ],
+     "answer": 1,
+     "exp": "'자리가 나면 연락하겠다' 뒤에 '몇 달 걸릴 수 있다'는 안내가 이어져야 흐름이 맞아. 나머지는 불합격 상황과 모순돼."
+    },
+    {
+     "type": "어휘",
+     "choices": [
+      "future",
+      "previous",
+      "accidental",
+      "mandatory"
+     ],
+     "answer": 0,
+     "exp": "앞날의 성공을 비는 마무리 인사라 future endeavors."
+    }
+   ],
+   "src": "seed",
+   "created": 2,
+   "seen": 0,
+   "wrong": 0
+  }
+ ]
+}
