@@ -69,8 +69,8 @@ button.primary{background:var(--mark);color:var(--paper);border-color:var(--mark
 button.ghost{background:transparent}
 button:disabled{opacity:.45;cursor:not-allowed}
 button.sm{padding:6px 10px;min-height:32px;font-size:13px}
-input,select,textarea{font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:9px 10px;min-width:0}
-textarea{width:100%;min-height:110px;resize:vertical;font-family:var(--f-mono);font-size:13px}
+input,select,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:9px 10px;min-width:0}
+textarea{width:100%;min-height:110px;resize:vertical;font-family:var(--f-mono);font-size:16px}
 label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);flex:1 1 140px;min-width:0}
 .stack>label.f{flex:none}
 .chip{display:inline-flex;align-items:center;gap:4px;font-family:var(--f-mono);font-size:11px;padding:2px 8px;border-radius:99px;
@@ -193,38 +193,75 @@ let TOK=LS.get('omr.tok')||null;    // {access, refresh, exp, uid}
 async function authReq(grant,body){
   const r=await fetch(CFG.url+'/auth/v1/token?grant_type='+grant,{method:'POST',headers:{apikey:CFG.anon,'Content-Type':'application/json'},body:JSON.stringify(body)});
   const j=await r.json().catch(()=>({}));
-  if(!r.ok||!j.access_token)throw{code:'auth',message:j.error_description||j.msg||j.message||('로그인 실패 ('+r.status+')')};
+  // 4xx만 "서버가 거절"(비밀번호 틀림, 토큰 폐기)으로 본다. 네트워크 오류·5xx로는 세션을 지우지 않는다.
+  if(!r.ok||!j.access_token)throw{code:r.status>=400&&r.status<500?'auth':r.status,message:j.error_description||j.msg||j.message||('로그인 실패 ('+r.status+')')};
   TOK={access:j.access_token,refresh:j.refresh_token,exp:Date.now()+(j.expires_in||3600)*1000,uid:j.user.id};LS.set('omr.tok',TOK)}
 let refreshing=null;
-async function token(){if(!TOK)throw{code:'auth',message:'로그인이 필요해'};
-  if(Date.now()>TOK.exp-60000){refreshing=refreshing||authReq('refresh_token',{refresh_token:TOK.refresh}).finally(()=>refreshing=null);
-    try{await refreshing}catch(e){TOK=null;LS.del('omr.tok');throw e}}
+function dropSession(){TOK=null;LS.del('omr.tok')}
+async function token(force){if(!TOK)throw{code:'auth',message:'로그인이 필요해'};
+  if(force||Date.now()>TOK.exp-60000){refreshing=refreshing||authReq('refresh_token',{refresh_token:TOK.refresh}).finally(()=>refreshing=null);
+    try{await refreshing}catch(e){if(e&&e.code==='auth')dropSession();throw e}}
   return TOK.access}
-async function rest(path,{method='GET',body,prefer}={}){
-  const h={apikey:CFG.anon,Authorization:'Bearer '+await token(),'Content-Type':'application/json'};if(prefer)h.Prefer=prefer;
+async function rest(path,{method='GET',body,prefer}={},again=false){
+  const h={apikey:CFG.anon,Authorization:'Bearer '+await token(again),'Content-Type':'application/json'};if(prefer)h.Prefer=prefer;
   const r=await fetch(CFG.url+'/rest/v1/'+path,{method,headers:h,body:body===undefined?undefined:JSON.stringify(body)});
+  if(r.status===401){if(!again)return rest(path,{method,body,prefer},true);dropSession();throw{code:'auth',message:'로그인이 만료됐어'}}
   const txt=await r.text();if(!r.ok){let m=txt;try{m=JSON.parse(txt).message||txt}catch{}throw{code:r.status,message:m}}
   return txt?JSON.parse(txt):null}
-async function selectAll(table){let out=[];for(let from=0;;from+=1000){const rows=await rest(`${table}?select=*&limit=1000&offset=${from}`);out=out.concat(rows);if(rows.length<1000)return out}}
+async function selectAll(table){let out=[];for(let from=0;;from+=1000){const rows=await rest(`${table}?select=*&order=${KEYS[table]||'user_id'}&limit=1000&offset=${from}`);out=out.concat(rows);if(rows.length<1000)return out}}
 const KEYS={words:'id',srs:'word_id',questions:'id',days:'date'};
 function strip(r){const o={...r};delete o.user_id;return o}
-const chains={};
-function errText(e){if(e&&e.code==='auth')return'로그인이 만료됐어. 다시 로그인해줘.';if(!navigator.onLine)return'오프라인이라 저장하지 못했어. 연결되면 다시 해줘.';return'저장하지 못했어 ('+(e&&e.code||'오류')+'). '+String(e&&e.message||'').slice(0,80)}
-function queue(key,fn){chains[key]=(chains[key]||Promise.resolve()).then(fn).catch(e=>{console.warn(e);toast(errText(e));if(e&&e.code==='auth')render()});return chains[key]}
-function upsert(table,id,obj){const kc=table==='settings'?null:KEYS[table];const row={...obj,user_id:TOK.uid};if(kc)row[kc]=id;
-  return queue(table+'/'+id,()=>rest(`${table}?on_conflict=${kc?'user_id,'+kc:'user_id'}`,{method:'POST',body:[row],prefer:'resolution=merge-duplicates,return=minimal'}))}
-function remove(table,id){return queue(table+'/'+id,()=>rest(`${table}?${KEYS[table]}=eq.${encodeURIComponent(id)}`,{method:'DELETE'}))}
+function errText(e){if(e&&e.code==='auth')return'로그인이 만료됐어. 다시 로그인해줘.';if(!navigator.onLine)return'오프라인이야. 연결되면 다시 해줘.';return'저장하지 못했어 ('+(e&&e.code||'오류')+'). '+String(e&&e.message||'').slice(0,80)}
 async function upsertMany(table,rows){const kc=KEYS[table];for(let i=0;i<rows.length;i+=200){
   await rest(`${table}?on_conflict=user_id,${kc}`,{method:'POST',body:rows.slice(i,i+200).map(r=>({...r,user_id:TOK.uid})),prefer:'resolution=merge-duplicates,return=minimal'})}}
 
-async function loadAll(){setSync('불러오는 중…');
-  const [w,s,q,d,st]=await Promise.all(['words','srs','questions','days','settings'].map(selectAll));
+/* ---------- 저장 대기열: 쓰기는 기기에 먼저 남기고 순서대로 보낸다 (오프라인이어도 기록이 남는다) ---------- */
+let OUT=LS.get('omr.out')||[];   // [{k, t:'up'|'del'|'day', table, id, row, args}]
+let lastSync='';
+function syncLabel(){setSync(OUT.length?'저장 대기 '+OUT.length:lastSync)}
+function saveOut(){LS.set('omr.out',OUT);syncLabel()}
+function enqueue(op){if(op.k)OUT=OUT.filter(x=>x.k!==op.k);OUT.push(op);saveOut();flush()}
+function upsert(table,id,obj){enqueue({k:table+'/'+id,t:'up',table,id,row:clone(obj)})}
+function remove(table,id){enqueue({k:table+'/'+id,t:'del',table,id})}
+async function sendOp(op){if(!TOK)throw{code:'auth',message:'로그인이 필요해'};
+  if(op.t==='day'){const row=await rest('rpc/bump_day',{method:'POST',body:op.args});
+    if(row&&row.date)S.days.set(row.date,pendingDays(row.date,strip(row),op));return}
+  if(op.t==='del')return rest(`${op.table}?${KEYS[op.table]}=eq.${encodeURIComponent(op.id)}`,{method:'DELETE'});
+  const kc=op.table==='settings'?null:KEYS[op.table];const row={...op.row,user_id:TOK.uid};if(kc)row[kc]=op.id;
+  return rest(`${op.table}?on_conflict=${kc?'user_id,'+kc:'user_id'}`,{method:'POST',body:[row],prefer:'resolution=merge-duplicates,return=minimal'})}
+let flushing=null,flushT=null;
+function flush(){if(flushing)return flushing;
+  // await 0: 대기열이 비어 있어도 finally 가 flushing 대입 뒤에 돌게 한다 (안 그러면 끝난 promise 가 남아 전송이 멈춘다)
+  return flushing=(async()=>{await 0;try{while(OUT.length){const op=OUT[0];
+    try{await sendOp(op)}catch(e){
+      if(e&&e.code==='auth'){render();return}
+      const bad=typeof e.code==='number'&&e.code>=400&&e.code<500&&e.code!==408&&e.code!==429;
+      if(!bad){clearTimeout(flushT);flushT=setTimeout(flush,20000);return}   // 오프라인·서버 오류: 남겨 두고 나중에
+      console.warn(e);toast(errText(e))}                                     // 데이터 자체가 거절됨: 버린다
+    OUT=OUT.filter(x=>x!==op);saveOut()}}finally{flushing=null;syncLabel()}})()}
+window.addEventListener('online',()=>flush());
+// days 증가분 (서버 bump_day 와 같은 계산)
+function applyDay(d,a){d.words_reviewed=(d.words_reviewed||0)+(a.p_reviewed||0);d.words_new=(d.words_new||0)+(a.p_new||0);d.words_again=(d.words_again||0)+(a.p_again||0);
+  d.q=d.q||{};for(const[k,v]of Object.entries(a.p_q||{})){const o=d.q[k]=d.q[k]||{n:0,c:0};o.n+=v.n||0;o.c+=v.c||0}return d}
+function pendingDays(date,d,skip){for(const op of OUT)if(op.t==='day'&&op!==skip&&op.args.p_date===date)applyDay(d,op.args);return d}
+// 서버 값 위에 아직 못 보낸 쓰기를 다시 얹는다
+function overlay(){for(const op of OUT){if(op.t==='day'){const id=op.args.p_date;S.days.set(id,applyDay(clone(S.days.get(id)||{date:id}),op.args));continue}
+  const m={words:S.words,srs:S.srs,questions:S.qs}[op.table];
+  if(op.table==='settings'){if(op.t==='up')S.settings={...S.settings,...op.row}}else if(m){op.t==='del'?m.delete(op.id):m.set(op.id,clone(op.row))}}}
+function fill(w,s,q,d,st){
   S.words=new Map(w.map(r=>[r.id,strip(r)]));S.srs=new Map(s.map(r=>[r.word_id,strip(r)]));
   S.qs=new Map(q.map(r=>[r.id,strip(r)]));S.days=new Map(d.map(r=>[r.date,strip(r)]));
-  S.settings={...DEFAULT_SETTINGS,...(st[0]?strip(st[0]):{})};S.ready=true;
-  setSync('동기화 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}))}
-function setDay(id,d){upsert('days',id,d)}
-function bumpDay(fn){const id=todayId();const d=clone(S.days.get(id)||{words_reviewed:0,words_new:0,words_again:0,q:{}});d.q=d.q||{};fn(d);S.days.set(id,d);setDay(id,d)}
+  const set=st[0]?strip(st[0]):{};for(const k in set)if(set[k]==null)delete set[k];
+  S.settings={...DEFAULT_SETTINGS,...set};overlay();S.ready=true}
+async function loadAll(){setSync('불러오는 중…');
+  const [w,s,q,d,st]=await Promise.all(['words','srs','questions','days','settings'].map(selectAll));
+  fill(w,s,q,d,st);LS.set('omr.snap',{w,s,q,d,st,ts:Date.now()});
+  lastSync='동기화 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});syncLabel()}
+// 오프라인으로 앱을 열면 마지막으로 받은 데이터로 띄운다
+function loadSnap(){const sn=LS.get('omr.snap');if(!sn)return false;fill(sn.w,sn.s,sn.q,sn.d,sn.st);
+  lastSync='오프라인 · '+new Date(sn.ts).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+' 데이터';syncLabel();return true}
+function bumpDay(a){const id=todayId();a={p_date:id,p_reviewed:0,p_new:0,p_again:0,p_q:{},...a};
+  S.days.set(id,applyDay(clone(S.days.get(id)||{date:id}),a));enqueue({t:'day',args:a})}
 function saveSettings(){upsert('settings','main',S.settings)}
 
 /* ---------- SRS (SM-2) — scriptable/ 위젯과 같은 규칙 ---------- */
@@ -235,7 +272,7 @@ function nextOf(s,q){s={ef:2.5,reps:0,ivl:0,lapses:0,...(s||{})};const now=Date.
   s.last=now;return s}
 function ivLabel(s,q){const n=nextOf(s,q);return n.ivl===0?'10분':n.ivl+'일'}
 function gradeWord(id,q){const isNew=!S.srs.has(id);const s=nextOf(S.srs.get(id),q);S.srs.set(id,s);upsert('srs',id,s);
-  bumpDay(d=>{d.words_reviewed++;if(isNew)d.words_new++;if(q<3)d.words_again++})}
+  bumpDay({p_reviewed:1,p_new:isNew?1:0,p_again:q<3?1:0})}
 function buildQueue(){const now=Date.now();
   const due=[...S.srs.entries()].filter(([id,s])=>s.due<=now&&S.words.has(id)).sort((a,b)=>a[1].due-b[1].due).map(x=>x[0]);
   const left=Math.max(0,(S.settings.daily_new??15)-((S.days.get(todayId())||{}).words_new||0));
@@ -379,7 +416,8 @@ function adjustLv(part,q,ok){const k='lv'+part;const lv=S.settings[k];S.settings
 function recordQ(id,q,results){const wrong=results.filter(r=>!r.ok).length;
   const nq={...clone(q),seen:(q.seen||0)+1,wrong:(q.wrong||0)+(wrong?1:0),last_ok:!wrong,last_at:Date.now()};
   S.qs.set(id,nq);upsert('questions',id,nq);
-  bumpDay(d=>{for(const r of results){const key=q.part+':'+r.type;d.q[key]=d.q[key]||{n:0,c:0};d.q[key].n++;if(r.ok)d.q[key].c++}})}
+  const p_q={};for(const r of results){const key=q.part+':'+r.type;const o=p_q[key]=p_q[key]||{n:0,c:0};o.n++;if(r.ok)o.c++}
+  bumpDay({p_q})}
 
 function rQuiz(part){
   if(S.session&&S.session.view==='p'+part){return part===5?rP5():rP6()}
@@ -588,8 +626,10 @@ function rDeck(){const st={new:'새',learning:'학습 중',mature:'장기'};
 }
 
 /* ---------- 시작 ---------- */
-async function refresh(force){if(!TOK||S.session)return;try{await loadAll();if(force)toast('최신 기록을 불러왔어');render()}catch(e){setSync('오프라인');if(e.code==='auth'){render()}else if(force)toast(errText(e))}}
-async function start(){if(!CFG.url||!TOK)return render();try{await loadAll()}catch(e){if(e.code==='auth')return render();setSync('불러오기 실패');V.innerHTML=`<div class="note">데이터를 불러오지 못했어 (${esc(e.code||'')}). ${esc(String(e.message||'').slice(0,120))}<br><button class="sm" onclick="start()">다시 시도</button></div>`;return}render()}
+async function refresh(force){if(!TOK||S.session)return;await flush();try{await loadAll();if(force)toast('최신 기록을 불러왔어');render()}catch(e){if(e.code==='auth'){render()}else{syncLabel();if(force)toast(errText(e))}}}
+async function start(){if(!CFG.url||!TOK)return render();try{await loadAll();flush()}catch(e){if(e.code==='auth')return render();
+  if(loadSnap()){render();clearTimeout(flushT);flushT=setTimeout(flush,20000);return}
+  setSync('불러오기 실패');V.innerHTML=`<div class="note">데이터를 불러오지 못했어 (${esc(e.code||'')}). ${esc(String(e.message||'').slice(0,120))}<br><button class="sm" onclick="start()">다시 시도</button></div>`;return}render()}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refresh(false)});  // 잠금화면 퀴즈 기록 반영
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 go();start();

@@ -28,8 +28,13 @@ async function authReq(grant, body) {
   r.method = "POST";
   r.headers = { apikey: SUPABASE_KEY, "Content-Type": "application/json" };
   r.body = JSON.stringify(body);
-  const j = await r.loadJSON();
-  if (!j.access_token) throw new Error(j.error_description || j.msg || "로그인 실패");
+  const j = await r.loadJSON();   // 네트워크 오류면 여기서 throw (auth 표시 없음)
+  if (!j.access_token) {
+    const code = r.response.statusCode;
+    const e = new Error(code === 400 ? "비밀번호가 맞지 않아" : (j.error_description || j.msg || `로그인 실패 (${code})`));
+    e.auth = code >= 400 && code < 500;   // 서버가 거절한 경우만. 이때만 저장된 비밀번호를 지운다.
+    throw e;
+  }
   Keychain.set(KC_REFRESH, j.refresh_token);
   return { token: j.access_token, uid: j.user.id };
 }
@@ -49,7 +54,7 @@ async function session() {
     Keychain.set(KC_PW, a.textFieldValue(0));
   }
   try { return await authReq("password", { email: EMAIL, password: Keychain.get(KC_PW) }); }
-  catch (e) { Keychain.remove(KC_PW); throw e; }
+  catch (e) { if (e.auth) Keychain.remove(KC_PW); throw e; }
 }
 
 // ---------- REST ----------
@@ -59,7 +64,7 @@ async function rest(sess, path, method = "GET", body) {
   r.headers = { apikey: SUPABASE_KEY, Authorization: `Bearer ${sess.token}`, "Content-Type": "application/json" };
   if (body !== undefined) {
     r.body = JSON.stringify(body);
-    r.headers.Prefer = "resolution=merge-duplicates,return=minimal";
+    if (!path.startsWith("rpc/")) r.headers.Prefer = "resolution=merge-duplicates,return=minimal";
   }
   const txt = await r.loadString();
   const code = r.response.statusCode;
@@ -77,7 +82,13 @@ async function loadData(sess) {
   fm.writeString(CACHE, JSON.stringify(data));
   return data;
 }
-function cached() { return fm.fileExists(CACHE) ? JSON.parse(fm.readString(CACHE)) : null; }
+function cached() {
+  try {
+    const d = fm.fileExists(CACHE) ? JSON.parse(fm.readString(CACHE)) : null;
+    if (d && d.day && d.day.date !== todayId()) d.day = null;   // 어제 캐시의 오늘 기록은 쓰지 않는다
+    return d;
+  } catch (e) { return null; }
+}
 
 // ---------- SRS (SM-2) — 웹앱 index.html 의 nextOf 와 같은 규칙 ----------
 function nextOf(s, q) {
@@ -111,7 +122,7 @@ function buildWidget(data, err) {
   w.refreshAfterDate = new Date(Date.now() + REFRESH_MIN * 60000);
   const fam = config.widgetFamily || "accessoryRectangular";
   if (!data || !data.words.length) {
-    const t = w.addText(err ? "OMR 토익 · 탭해서 로그인" : "OMR 토익 · 단어 없음");
+    const t = w.addText(!err ? "OMR 토익 · 단어 없음" : err.auth || /로그인/.test(err.message || "") ? "OMR 토익 · 탭해서 로그인" : "OMR 토익 · 연결 대기 중");
     t.font = Font.systemFont(12);
     return w;
   }
@@ -158,11 +169,11 @@ async function runQuiz() {
   list = list.slice(0, QUIZ_COUNT);
   const counted = new Set(due.concat(fresh));                    // 자유 복습은 일정에 반영 안 함
   const again = new Set();
-  const day = Object.assign({ words_reviewed: 0, words_new: 0, words_again: 0, q: {} }, data.day || {});
-  delete day.user_id; delete day.date;
+  // 오늘 기록은 증가분만 모아 서버 bump_day 로 더한다 (앱 기록을 덮어쓰지 않게)
+  const delta = { p_date: todayId(), p_reviewed: 0, p_new: 0, p_again: 0 };
   let n = 0, ok = 0;
 
-  for (let i = 0; i < list.length; i++) {
+  try { for (let i = 0; i < list.length; i++) {
     const id = list[i]; const word = wmap.get(id);
     const others = shuffle(data.words.filter(o => o.id !== id && o.ko !== word.ko))
       .sort((a, b) => (b.pos === word.pos) - (a.pos === word.pos)).slice(0, 3).map(o => o.ko);
@@ -183,7 +194,7 @@ async function runQuiz() {
       delete s.user_id; s.word_id = id; s.user_id = sess.uid;
       smap.set(id, s);
       await rest(sess, "srs?on_conflict=user_id,word_id", "POST", [s]);
-      day.words_reviewed++; if (isNew) day.words_new++; if (!right) day.words_again++;
+      delta.p_reviewed++; if (isNew) delta.p_new++; if (!right) delta.p_again++;
     }
     if (!right && !again.has(id)) { again.add(id); list.push(id); }
 
@@ -193,8 +204,10 @@ async function runQuiz() {
     r.addAction(i < list.length - 1 ? "다음" : "끝");
     r.addCancelAction("그만하기");
     if (await r.present() === -1) break;
+  } } finally {
+    // 중간에 오류가 나도 이미 저장된 srs 만큼은 오늘 기록에 더한다
+    if (delta.p_reviewed) await rest(sess, "rpc/bump_day", "POST", delta);
   }
-  if (n) await rest(sess, "days?on_conflict=user_id,date", "POST", [{ ...day, user_id: sess.uid, date: todayId() }]);
   const end = new Alert();
   end.title = `${n}개 중 ${ok}개 정답`;
   end.message = "기록을 저장했어. 웹앱을 열면 바로 반영돼.";

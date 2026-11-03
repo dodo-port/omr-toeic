@@ -17,6 +17,8 @@
   - Part 5: `stem`에 빈칸 `-------`, `choices` 4개, `answer` 0~3
   - Part 6: `passage`에 `[1]`~`[4]`, `items: [{type, choices, answer, exp}]` 4개 중 1개는 `문장삽입`
 - `days(date YYYY-MM-DD, words_reviewed, words_new, words_again, q)` — `q`는 `{"5:품사": {n, c}}` 형태, 약점 분석의 원천
+  - **days는 행을 직접 upsert하지 않는다.** 앱(`bumpDay`)과 위젯 모두 증가분만 `rpc/bump_day`로 보낸다. 통째로 쓰면 앱·위젯이 서로 기록을 지운다.
+- 앱의 모든 쓰기는 `enqueue` 대기열(localStorage `omr.out`)을 거친다. 오프라인이면 남겨 두고 연결되면 보낸다. 네트워크 오류로 세션(`omr.tok`)이나 위젯 키체인 비밀번호를 지우지 않는다(4xx 거절일 때만).
 - `settings(lv5, lv6, daily_new)` — 행 하나
 - PostgREST 일괄 upsert는 모든 행의 키가 같아야 한다 (seed.json의 questions는 빈 필드를 null로 채워 둠).
 
