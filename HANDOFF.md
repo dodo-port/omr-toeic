@@ -16,13 +16,14 @@ Claude Code가 이 프로젝트를 처음 열었을 때 읽는 안내서. 구조
 
 | 항목 | 상태 |
 |---|---|
-| 웹앱 `index.html` (단어 SRS, P5/P6, 분석, 단어장, 설정) | 작성 완료 · JS 문법 검사 통과 · **실제 Supabase 연결 미검증** |
-| Supabase 스키마 `supabase/schema.sql` (테이블 5개 + RLS) | 작성 완료 · **실행 미검증** |
+| 웹앱 `index.html` (단어 SRS, P5/P6, 분석, 단어장, 설정) | 로컬에서 확인 (2026-11-03): 로그인, 시드 upsert, 단어 SRS 저장, P5 기록·레벨 조정, 새로고침 후 유지. **Claude 문제 생성 미검증** |
+| Supabase 프로젝트 `omr-toeic` (Seoul, 무료, ref `gofqlrntbuyrtdsipigg`) | 스키마 적용 · RLS 5개 테이블 확인 · advisors 경고 0 · 계정 1개 |
 | Scriptable 위젯 `scriptable/omr-toeic-widget.js` | 작성 완료 · 문법 검사 통과 · **폰에서 미검증** |
-| PWA 파일 (`manifest.webmanifest`, `sw.js`, `icons/`) | 작성 완료 |
-| 시드 데이터 `data/seed.json` (단어 60, P5 18, P6 3) | 작성 완료 (전부 오리지널 문항) |
-| git 저장소 | **아직 없음** (원격 복사 시 `.git`이 빠짐) |
-| GitHub 저장소 · Pages 배포 | 아직 안 함 |
+| PWA 파일 (`manifest.webmanifest`, `sw.js`, `icons/`) | 배포본에서 서비스 워커 등록 확인 (`omr-v2`) |
+| 시드 데이터 `data/seed.json` (단어 60, P5 18, P6 3) | DB 적재 확인 |
+| 작업 폴더 | 실제 경로는 `OneDrive\Desktop\토익어플\omr-toeic\omr-toeic` (아래 1번의 경로와 다름) |
+| GitHub 저장소 · Pages 배포 | `dodo-port/omr-toeic` (public) · https://dodo-port.github.io/omr-toeic/ |
+| 폰 설치 · 위젯 (README 3~5) | 아직 안 함 |
 
 이전에 claude.ai 아티팩트로 만든 버전이 있지만 데이터는 연결되지 않는다. 이 저장소가 정식 버전이다.
 
