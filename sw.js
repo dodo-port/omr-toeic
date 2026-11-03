@@ -1,6 +1,6 @@
 // OMR 토익 서비스 워커 — 앱 껍데기만 캐시한다. Supabase/Claude 요청은 항상 네트워크로.
 // 앱 파일을 고치면 VERSION 을 올려야 폰에 새 버전이 깔린다.
-const VERSION = 'omr-v1';
+const VERSION = 'omr-v2';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './data/seed.json',
   './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png'];
 
