@@ -37,6 +37,7 @@ create table if not exists public.questions (
   choices  jsonb,                    -- Part 5 보기 4개
   answer   smallint,                 -- Part 5 정답 0~3
   exp      text,                     -- Part 5 해설
+  ko       text,                     -- Part 5 문장 해석 (정답을 넣은 문장)
   title    text,                     -- Part 6 지문 제목
   passage  text,                     -- Part 6 지문, 빈칸은 [1]~[4]
   items    jsonb,                    -- Part 6 문항 [{type, choices, answer, exp}]

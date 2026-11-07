@@ -562,7 +562,8 @@
    "src": "seed",
    "created": 0,
    "seen": 0,
-   "wrong": 0
+   "wrong": 0,
+   "ko": "금요일까지 경비 보고서를 제출해 주세요."
   },
   {
    "id": "seed-p5-02",
@@ -584,7 +585,8 @@
    "src": "seed",
    "created": 1,
    "seen": 0,
-   "wrong": 0
+   "wrong": 0,
+   "ko": "Lee 씨는 신입 직원 교육을 맡고 있다."
   },
   {
    "id": "seed-p5-03",
@@ -606,7 +608,8 @@
    "src": "seed",
    "created": 2,
    "seen": 0,
-   "wrong": 0
+   "wrong": 0,
+   "ko": "새 프린터는 예전 것보다 훨씬 빠르다."
   },
   {
    "id": "seed-p5-04",
@@ -628,7 +631,8 @@
    "src": "seed",
    "created": 3,
    "seen": 0,
-   "wrong": 0
+   "wrong": 0,
+   "ko": "날씨가 나빴지만 행사는 야외에서 열렸다."
   },
   {
    "id": "seed-p5-05",
@@ -650,7 +654,8 @@
    "src": "seed",
    "created": 4,
    "seen": 0,
-   "wrong": 0
+   "wrong": 0,
+   "ko": "마케팅팀이 다음 주 회의에서 결과를 발표할 것이다."
   },
   {
    "id": "seed-p5-06",
@@ -672,7 +677,8 @@
    "src": "seed",
    "created": 5,
    "seen": 0,
-   "wrong": 0
+   "wrong": 0,
+   "ko": "지원자들은 각자 관리자 두 명에게 면접을 봤다."
   },
   {
    "id": "seed-p5-07",
@@ -694,7 +700,8 @@
    "src": "seed",
    "created": 6,
    "seen": 0,
-   "wrong": 0
+   "wrong": 0,
+   "ko": "어느 한쪽이 달리 요청하지 않는 한 계약은 자동으로 갱신된다."
   },
   {
    "id": "seed-p5-08",
@@ -716,7 +723,8 @@
    "src": "seed",
    "created": 7,
    "seen": 0,
-   "wrong": 0
+   "wrong": 0,
+   "ko": "Park 씨의 제안은 이사회에서 만장일치로 승인되었다."
   },
   {
    "id": "seed-p5-09",
@@ -738,7 +746,8 @@
    "src": "seed",
    "created": 8,
    "seen": 0,
-   "wrong": 0
+   "wrong": 0,
+   "ko": "워크숍에 참여하고 싶은 직원은 월요일까지 등록해야 한다."
   },
   {
    "id": "seed-p5-10",
@@ -760,7 +769,8 @@
    "src": "seed",
    "created": 9,
    "seen": 0,
-   "wrong": 0
+   "wrong": 0,
+   "ko": "이사가 도착할 무렵이면 직원들이 회의실 준비를 끝내 놓았을 것이다."
   },
   {
    "id": "seed-p5-11",
@@ -782,7 +792,8 @@
    "src": "seed",
    "created": 10,
    "seen": 0,
-   "wrong": 0
+   "wrong": 0,
+   "ko": "새 정책에 관한 자세한 내용은 첨부 파일을 참고해 주세요."
   },
   {
    "id": "seed-p5-12",
@@ -804,7 +815,8 @@
    "src": "seed",
    "created": 11,
    "seen": 0,
-   "wrong": 0
+   "wrong": 0,
+   "ko": "Kim 씨는 분기 보고서를 직접 검토하는 것을 좋아한다."
   },
   {
    "id": "seed-p5-13",
@@ -826,7 +838,8 @@
    "src": "seed",
    "created": 12,
    "seen": 0,
-   "wrong": 0
+   "wrong": 0,
+   "ko": "예상치 못한 자재비 상승에도 불구하고 프로젝트는 예산 안에서 끝났다."
   },
   {
    "id": "seed-p5-14",
@@ -848,7 +861,8 @@
    "src": "seed",
    "created": 13,
    "seen": 0,
-   "wrong": 0
+   "wrong": 0,
+   "ko": "감사가 끝난 뒤에야 관리자는 장부가 맞지 않는 것을 알아챘다."
   },
   {
    "id": "seed-p5-15",
@@ -870,7 +884,8 @@
    "src": "seed",
    "created": 14,
    "seen": 0,
-   "wrong": 0
+   "wrong": 0,
+   "ko": "급여는 경력과 자격에 걸맞게 정해진다."
   },
   {
    "id": "seed-p5-16",
@@ -892,7 +907,8 @@
    "src": "seed",
    "created": 15,
    "seen": 0,
-   "wrong": 0
+   "wrong": 0,
+   "ko": "고객이 조건을 더 일찍 받아들였다면 계약은 지난달에 체결되었을 것이다."
   },
   {
    "id": "seed-p5-17",
@@ -914,7 +930,8 @@
    "src": "seed",
    "created": 16,
    "seen": 0,
-   "wrong": 0
+   "wrong": 0,
+   "ko": "이사회는 새 안전 규정을 즉시 시행해야 한다고 주장했다."
   },
   {
    "id": "seed-p5-18",
@@ -936,7 +953,8 @@
    "src": "seed",
    "created": 17,
    "seen": 0,
-   "wrong": 0
+   "wrong": 0,
+   "ko": "교육 내용이 아주 폭넓어서 대부분의 참가자가 준비가 잘 됐다고 느꼈다."
   },
   {
    "id": "seed-p6-1",
@@ -998,7 +1016,8 @@
    "src": "seed",
    "created": 0,
    "seen": 0,
-   "wrong": 0
+   "wrong": 0,
+   "ko": null
   },
   {
    "id": "seed-p6-2",
@@ -1060,7 +1079,8 @@
    "src": "seed",
    "created": 1,
    "seen": 0,
-   "wrong": 0
+   "wrong": 0,
+   "ko": null
   },
   {
    "id": "seed-p6-3",
@@ -1122,7 +1142,8 @@
    "src": "seed",
    "created": 2,
    "seen": 0,
-   "wrong": 0
+   "wrong": 0,
+   "ko": null
   }
  ]
 }
