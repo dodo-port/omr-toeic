@@ -115,6 +115,8 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mu
 .exp{border-radius:6px;padding:10px 12px;font-size:14px}
 .exp.ok{background:var(--good-soft)} .exp.no{background:var(--bad-soft)}
 .exp .tr{margin-top:6px;padding-top:6px;border-top:1px solid var(--line)}
+.dg{border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:2px;font-size:14px}
+.dk{font-size:12px;color:var(--muted);margin-top:4px}
 /* stats */
 .bar{display:grid;grid-template-columns:110px minmax(0,1fr) 72px;gap:8px;align-items:center;font-size:13px}
 .bar{cursor:default}.bar[data-t]{cursor:pointer}
@@ -649,6 +651,7 @@ function rStats(){const bars=part=>{const st=typeStats(part);const rows=Object.e
   const hard=[...S.srs.entries()].filter(([id,s])=>s.lapses&&S.words.has(id)).sort((a,b)=>b[1].lapses-a[1].lapses).slice(0,8);
   V.innerHTML=`<div class="stack"><div><div class="eyebrow">약점 분석</div><h2>유형별 정답률</h2></div>
   ${head}
+  <div class="sheet stack" id="diag"></div>
   <div class="sheet stack"><div class="row" style="justify-content:space-between"><b>Part 5</b><span class="muted" style="font-size:13px">전체 ${tot(5)} · 레벨 ${lvText(S.settings.lv5)}</span></div>${bars(5)}</div>
   <div class="sheet stack"><div class="row" style="justify-content:space-between"><b>Part 6</b><span class="muted" style="font-size:13px">전체 ${tot(6)} · 레벨 ${lvText(S.settings.lv6)}</span></div>${bars(6)}</div>
   <div class="sheet stack"><b>최근 14일 학습량</b>${active<3?`<div class="muted" style="font-size:13px">공부한 날이 ${active}일이라 아직 그래프가 의미 없어. 3일 이상 쌓이면 보여줄게.</div>`:`
@@ -662,9 +665,83 @@ function rStats(){const bars=part=>{const st=typeStats(part);const rows=Object.e
     ${hard.length?`<div><div class="eyebrow" style="margin-bottom:6px">자주 틀리는 단어</div>${hard.map(([id,s])=>{const w=S.words.get(id);return`<div class="witem"><div class="line"><span><span class="w">${esc(w.w)}</span> <span class="k">${esc(w.ko)}</span></span><span class="chip">${s.lapses}회</span></div></div>`}).join('')}</div>`:''}
   </div></div>`;
   // 유형 막대나 맨 위 버튼을 누르면 그 유형만 5문제
-  const practice=t=>{const ids=pick(5,5,t);if(!ids.length)return toast('그 유형 문제가 없어');location.hash='p5';startP5(false,ids)};
+  const practice=practiceType;
   V.querySelectorAll('.bar[data-t]').forEach(b=>{b.onclick=()=>practice(b.dataset.t);b.onkeydown=e=>{if(e.key==='Enter')practice(b.dataset.t)}});
-  if(ws)sweak.onclick=()=>practice(weak5)}
+  if(ws)sweak.onclick=()=>practice(weak5);
+  rDiag()}
+
+/* ---------- Claude 정밀진단 ---------- */
+// 최근 풀이(attempts: 고른 보기까지)와 단어 기록을 근거로 붙여 Claude에게 진단을 받는다.
+// 결과는 이 기기에만 남긴다(omr.diag). 표본이 적으면 단정하지 말라고 프롬프트에서 막는다.
+const DIAG_MIN=10;let diagCtl=null;
+function practiceType(t){const ids=pick(5,5,t);if(!ids.length)return toast('그 유형 문제가 없어');location.hash='p5';startP5(false,ids)}
+function blankCtx(p,n){p=String(p||'');const i=p.indexOf('['+n+']');if(i<0)return'';return p.slice(Math.max(0,i-90),i+90).replace(/\s+/g,' ')}
+function diagData(atts){
+  const rows=atts.map(a=>{const q=S.qs.get(a.qid);if(!q)return null;const d=todayId(new Date(a.at));
+    const base={date:d,part:a.part,type:a.type,level:a.level,ok:a.ok,retry:!!a.review};
+    if(a.part===5)return{...base,sentence:q.stem,picked:(q.choices||[])[a.picked],answer:(q.choices||[])[a.answer]};
+    const it=(q.items||[])[a.item]||{};return{...base,around_blank:blankCtx(q.passage,a.item+1),choices:it.choices,picked:(it.choices||[])[a.picked],answer:(it.choices||[])[a.answer]}}).filter(Boolean);
+  const first=rows.filter(r=>!r.retry);
+  let nw=0,ln=0,mt=0;for(const id of S.words.keys()){const s=wordStatus(id);s==='new'?nw++:s==='mature'?mt++:ln++}
+  const hard=[...S.srs.entries()].filter(([id,s])=>s.lapses&&S.words.has(id)).sort((a,b)=>b[1].lapses-a[1].lapses).slice(0,30)
+    .map(([id,s])=>{const w=S.words.get(id);return{word:w.w,pos:w.pos,meaning:w.ko,lapses:s.lapses,reps:s.reps,interval_days:Math.round(s.ivl)}});
+  const days=[];for(let i=13;i>=0;i--){const id=todayId(new Date(Date.now()-i*DAY));const d=S.days.get(id);if(!d)continue;let n=0,c=0;for(const v of Object.values(d.q||{})){n+=v.n;c+=v.c}
+    days.push({date:id,words_reviewed:d.words_reviewed||0,words_new:d.words_new||0,words_forgot:d.words_again||0,questions:n,correct:c})}
+  return{today:todayId(),current_level:{part5:+S.settings.lv5.toFixed(2),part6:+S.settings.lv6.toFixed(2),scale:'1=~600, 2=~750, 3=850+'},
+    totals_all_time:{part5_by_type:typeStats(5),part6_by_type:typeStats(6)},
+    attempts:{count:rows.length,first_try:first.length,first_try_correct:first.filter(r=>r.ok).length,items:rows},
+    words:{total:S.words.size,not_seen:nw,learning:ln,long_term:mt,often_forgotten:hard},study_days_last14:days}}
+function diagPrompt(data){return`You are a TOEIC tutor. Give a precise diagnosis of ONE learner from the actual study log below.
+Write every text value in Korean, casual 반말, short and direct.
+Rules:
+- Base every claim on the data and cite counts (예: "대명사 첫 풀이 4문제 중 1개"). Never invent data or test scores.
+- If an area has fewer than 5 first-try attempts, say it is 표본 부족 instead of concluding. Say confidence plainly.
+- Use WHICH wrong choice was picked to infer the misconception (예: 형용사 자리에 부사를 고름). Quote the words involved.
+- "retry": true means the learner already saw the answer before; judge mainly on first tries.
+- No praise or encouragement. Report what is weak, why, and what to do.
+Reply with ONLY one JSON object, no other text:
+{"summary":"한두 문장 총평","level":{"estimate":"예: 600점대 수준","confidence":"낮음|보통|높음","why":"근거"},
+"weak":[{"area":"유형 이름 또는 단어","evidence":"수치 근거","cause":"어떤 함정에 왜 걸리는지","fix":"구체적인 연습법"}],
+"strong":[{"area":"...","evidence":"..."}],
+"words":{"pattern":"자주 잊는 단어들의 공통점 (없으면 빈 문자열)","focus":["단어"]},
+"plan":[{"day":"1일차","task":"이 앱으로 20분 안에 할 일"}],
+"caveat":"이 진단의 데이터 한계 한 줄"}
+"weak" lists at most 4 items, worst first. For a question type, "area" must be one of: ${TYPES6.join(', ')}. "plan" has 5 to 7 entries using only what this app offers: 단어 학습, Part 5 풀기, Part 6 풀기, 유형별 5문제, 오답 다시 풀기.
+DATA:
+${JSON.stringify(data)}`}
+function rDiag(){const el=document.getElementById('diag');if(!el)return;const r=LS.get('omr.diag');
+  const li=a=>(Array.isArray(a)?a:[]);
+  const body=r?`<div class="muted" style="font-size:13px">${esc(new Date(r.ts).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}))} 진단 · 근거 풀이 ${r.n}회(첫 풀이 ${r.first}) · 단어 ${r.words}개</div>
+    ${r.d.summary?`<div>${esc(r.d.summary)}</div>`:''}
+    ${r.d.level?`<div class="line"><span>추정 수준 <b>${esc(r.d.level.estimate||'')}</b></span><span class="chip">확신 ${esc(r.d.level.confidence||'')}</span></div>${r.d.level.why?`<div class="muted" style="font-size:13px">${esc(r.d.level.why)}</div>`:''}`:''}
+    ${li(r.d.weak).length?`<div class="eyebrow">약한 곳</div>${li(r.d.weak).map((w,k)=>`<div class="dg"><div class="line"><b>${esc(w.area||'')}</b>${TYPES5.includes(w.area)?`<button class="sm" data-dt="${esc(w.area)}">5문제</button>`:''}</div>
+      <div class="dk">근거</div><div>${esc(w.evidence||'')}</div><div class="dk">이유</div><div>${esc(w.cause||'')}</div><div class="dk">연습</div><div>${esc(w.fix||'')}</div></div>`).join('')}`:''}
+    ${li(r.d.strong).length?`<div class="eyebrow">괜찮은 곳</div>${li(r.d.strong).map(s=>`<div><b>${esc(s.area||'')}</b> <span class="muted">${esc(s.evidence||'')}</span></div>`).join('')}`:''}
+    ${r.d.words&&(r.d.words.pattern||li(r.d.words.focus).length)?`<div class="eyebrow">단어</div>${r.d.words.pattern?`<div>${esc(r.d.words.pattern)}</div>`:''}${li(r.d.words.focus).length?`<div class="row" style="gap:6px;flex-wrap:wrap">${li(r.d.words.focus).map(w=>`<span class="chip">${esc(w)}</span>`).join('')}</div>`:''}`:''}
+    ${li(r.d.plan).length?`<div class="eyebrow">다음 며칠</div>${li(r.d.plan).map(p=>`<div class="line" style="align-items:flex-start"><span class="dk" style="min-width:44px">${esc(p.day||'')}</span><span style="flex:1">${esc(p.task||'')}</span></div>`).join('')}`:''}
+    ${r.d.caveat?`<div class="muted" style="font-size:13px">${esc(r.d.caveat)}</div>`:''}`
+    :`<div class="muted" style="font-size:13px">최근 풀이에서 고른 보기, 유형별 정답률, 자주 잊는 단어를 Claude에게 보내서 어디가 왜 약한지 진단받아. 풀이 ${DIAG_MIN}회 이상부터 할 수 있어.</div>`;
+  el.innerHTML=`<div class="line"><b>Claude 정밀진단</b><span class="row" style="gap:6px"><button class="sm ghost" id="dstop" hidden>중지</button><button class="sm ${r?'':'primary'}" id="dgo">${r?'다시 진단':'진단받기'}</button></span></div>
+    <div class="gen-out" id="dout" hidden></div>${body}`;
+  el.querySelectorAll('[data-dt]').forEach(b=>b.onclick=()=>practiceType(b.dataset.dt));
+  if(!CFG.claudeKey){dgo.disabled=true;dout.hidden=false;dout.innerHTML='Claude API 키가 없어. <a href="#deck">단어장 탭 아래 설정</a>에서 넣어줘.'}
+  else dgo.onclick=diagnose}
+async function diagnose(){if(!navigator.onLine){toast('오프라인이야. 연결되면 해줘');return}
+  const out=document.getElementById('dout'),btn=document.getElementById('dgo'),stop=document.getElementById('dstop');
+  btn.disabled=true;out.hidden=false;out.textContent='풀이 기록을 모으는 중…';
+  diagCtl=new AbortController();stop.hidden=false;stop.onclick=()=>diagCtl.abort();
+  try{await flush();
+    const atts=await rest('attempts?select=at,qid,part,item,type,level,picked,answer,ok,review&order=at.desc&limit=150');
+    const data=diagData(atts||[]);
+    if(data.attempts.count<DIAG_MIN){out.textContent=`풀이 기록이 ${data.attempts.count}회라 진단하기엔 적어. ${DIAG_MIN}회 이상 풀고 다시 해줘.`;return}
+    out.textContent=`Claude가 풀이 ${data.attempts.count}회를 보는 중… (20~60초)`;
+    const{text}=await claude(diagPrompt(data),diagCtl.signal);const d=parseJSON(text,'object');
+    if(!d||typeof d!=='object'||Array.isArray(d)||!(d.summary||Array.isArray(d.weak)))throw{code:'json'};
+    LS.set('omr.diag',{ts:Date.now(),n:data.attempts.count,first:data.attempts.first_try,words:data.words.total,d});
+    toast('진단을 받았어');if(document.getElementById('diag'))rDiag()}
+  catch(e){const m=e&&e.name==='AbortError'?'중지했어.':e.code===401?'API 키가 올바르지 않아. 설정에서 다시 넣어줘.':e.code===429?'요청 한도에 걸렸어. 잠시 후 다시 해줘.':e.code===529||e.code===503?'Claude 서버가 바빠. 잠시 후 다시 해줘.':e.code==='json'?'응답 형식이 깨졌어. 다시 눌러줘.':'진단하지 못했어: '+String(e.message||e.code||'오류').slice(0,120);
+    if(out.isConnected)out.textContent=m}
+  finally{diagCtl=null;if(btn.isConnected){btn.disabled=false;stop.hidden=true}}}
 
 /* ---------- 단어장 + 설정 ---------- */
 let deckQ='',deckLv='',delArm=null,editId=null;

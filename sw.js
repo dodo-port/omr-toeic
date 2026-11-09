@@ -1,6 +1,6 @@
 // OMR 토익 서비스 워커 — 앱 껍데기만 캐시한다. Supabase/Claude 요청은 항상 네트워크로.
 // 앱 파일을 고치면 VERSION 을 올려야 폰에 새 버전이 깔린다.
-const VERSION = 'omr-v8';
+const VERSION = 'omr-v9';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './data/seed.json',
   './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png'];
 
@@ -14,8 +14,9 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return; // API·폰트는 건드리지 않음
-  // 네트워크 우선, 실패하면 캐시 (오프라인에서도 앱이 열리게)
-  e.respondWith(fetch(e.request).then(r => {
+  // 네트워크 우선, 실패하면 캐시 (오프라인에서도 앱이 열리게).
+  // no-cache: 브라우저 HTTP 캐시(GitHub Pages는 10분)를 건너뛰고 서버에 새 버전이 있는지 매번 물어본다.
+  e.respondWith(fetch(e.request, { cache: 'no-cache' }).then(r => {
     const copy = r.clone(); caches.open(VERSION).then(c => c.put(e.request, copy)); return r;
   }).catch(() => caches.match(e.request).then(r => r || caches.match('./index.html'))));
 });
