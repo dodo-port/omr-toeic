@@ -436,10 +436,8 @@ function rWords(){
     ${done?`<button class="primary" id="wnext">다음</button>`:''}</div>`;
   V.querySelectorAll('.choice').forEach(c=>c.onclick=()=>answerWord(+c.dataset.i));
   armTwice(wq,()=>finishWords());
-  if(done){wnext.onclick=()=>wDone(ok);
-    // 정답이면 1.2초 뒤 자동으로 넘긴다(P5와 같음). 설명을 누르면 멈춘다.
-    if(ok){autoT=setTimeout(()=>{if(S.session===s&&s.picked!=null)wDone(true)},1200);
-      const ex=V.querySelector('.exp');ex.style.cursor='pointer';ex.onclick=()=>{clearTimeout(autoT);wnext.textContent='다음'};wnext.textContent='다음 (자동)'}}}
+  // 정답이어도 자동으로 넘기지 않는다(P5와 같음). 설명을 보고 "다음"을 누른다.
+  if(done)wnext.onclick=()=>wDone(ok)}
 function startWords(){const q=buildQueue();const st=new Map();
   for(const id of q.due){const w=S.words.get(id);st.set(id,{isNew:false,steps:[blankOf(w)?'blank':'mean'],k:0,miss:0})}
   for(const id of q.fresh){const w=S.words.get(id);st.set(id,{isNew:true,steps:['learn','mean',...(blankOf(w)?['blank']:[])],k:0,miss:0})}
@@ -529,9 +527,8 @@ function rP5(){const s=S.session;if(s.i>=s.list.length)return finishQ(5);const i
     ${done?`<button class="primary" id="pn">다음</button>`:''}</div>`;
   V.querySelectorAll('.choice').forEach(b=>b.onclick=()=>answerP5(+b.dataset.i));
   if(done)pn.onclick=nextP5;armTwice(pq,()=>finishQ(5));
-  // 정답이면 1.2초 뒤 자동으로 넘긴다. 해설을 읽으려면 해설을 누르면 멈춘다.
-  clearTimeout(autoT);if(done&&ok){autoT=setTimeout(()=>{if(S.session===s&&s.picked!=null)nextP5()},1200);
-    const ex=V.querySelector('.exp');if(ex){ex.style.cursor='pointer';ex.onclick=()=>{clearTimeout(autoT);pn.textContent='다음'}}pn.textContent='다음 (자동)'}}
+  // 정답이어도 자동으로 넘기지 않는다. 해설과 해석을 보고 "다음"을 누른다.
+  clearTimeout(autoT)}
 let autoT=null;
 function answerP5(i){const s=S.session;if(s.picked!=null||i<0||i>3)return;const id=s.list[s.i];const q=S.qs.get(id);s.picked=i;const ok=i===q.answer;if(ok)s.ok++;else s.miss.push(id);
   recordQ(id,q,[{type:q.type,ok,picked:i,answer:q.answer,item:0}],s.review);if(!s.review){adjustLv(5,q,ok);saveSettings()}rP5()}
