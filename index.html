@@ -589,9 +589,9 @@ function validP6(x){if(!x||typeof x.passage!=='string'||!Array.isArray(x.items)|
   return x.items.filter(it=>it&&it.type==='문장삽입').length===1&&x.items.every(it=>it&&uniq4(it.choices)&&okAns(it.answer))}
 // 정답 위치는 코드에서 섞는다 (모델에게만 맡기면 한쪽으로 몰린다)
 function mix(choices,answer){const idx=shuffle([0,1,2,3]);return{choices:idx.map(i=>String(choices[i]).trim()),answer:idx.indexOf(answer)}}
-function genPrompt(part,lv,weak){
+function genPrompt(part,lv,weak,extra){
   const lvDesc={1:'Level 1 (target score ~600): common business vocabulary, clear grammar cues.',2:'Level 2 (target ~750): subtler grammar, collocations, distractors from the same word family.',3:'Level 3 (target 850+): advanced vocabulary, inversion, subjunctive, close-meaning distractors, long sentences.'}[lv];
-  const focus=weak.length?`Give extra weight to these weak question types: ${weak.join(', ')}.`:'Mix the question types.';
+  const focus=(weak.length?`Give extra weight to these weak question types: ${weak.join(', ')}.`:'Mix the question types.')+(extra?' '+extra:'');
   const existing=pool(part).slice(-30).map(([,q])=>part===5?q.stem:q.title).join('\n');
   return part===5?
 `Write 8 ORIGINAL TOEIC Part 5 (incomplete sentence) questions. ${lvDesc} ${focus}
@@ -610,11 +610,8 @@ Do not copy any published test item. Choices are shuffled after you answer, so i
 ${existing||'(none)'}
 Reply with ONLY one JSON object, no other text:
 {"title":"Email: Office Relocation","passage":"... [1] ... [2] ... [3] ... [4] ...","items":[{"type":"품사","choices":["a","b","c","d"],"answer":0,"exp":"한국어 해설 1~2문장 (반말)"}]}  (items has exactly 4 entries)`}
-async function generate(part){if(!CFG.claudeKey)return;if(!navigator.onLine){toast('오프라인이야. 연결되면 만들어줘');return}const lv=Math.round(S.settings['lv'+part]);const weak=weakTypes(part);
-  const out=document.getElementById('qgo'),btn=document.getElementById('qg'),stop=document.getElementById('qstop');
-  btn.disabled=true;stop.hidden=false;out.hidden=false;out.textContent='Claude가 문제를 쓰는 중… (20~60초)';
-  genCtl=new AbortController();stop.onclick=()=>genCtl.abort();
-  try{const{text,stop:reason}=await claude(genPrompt(part,lv,weak),genCtl.signal);const res=parseJSON(text,part===5?'array':'object');let saved=0,dropped=0;const now=Date.now();
+// 생성 결과 중 형식이 맞는 것만 저장한다. 반환: 저장 개수, 버린 개수, 저장한 id
+function saveGen(part,lv,res){let dropped=0;const now=Date.now();
     const rows=[];
     if(part===5){for(const x of(Array.isArray(res)?res:[])){if(!validP5(x)){dropped++;continue}const m=mix(x.choices,x.answer);
         rows.push({id:'c'+now.toString(36)+'-'+rows.length,part:5,level:lv,type:TYPES5.includes(x.type)?x.type:'어휘',stem:x.stem.trim(),choices:m.choices,answer:m.answer,exp:String(x.exp||''),ko:typeof x.ko==='string'&&x.ko.trim()?x.ko.trim():null,title:null,passage:null,items:null,src:'claude',created:now+rows.length,seen:0,wrong:0})}}
@@ -622,7 +619,13 @@ async function generate(part){if(!CFG.claudeKey)return;if(!navigator.onLine){toa
       if(validP6(x))rows.push({id:'c'+now.toString(36),part:6,level:lv,type:null,stem:null,choices:null,answer:null,exp:null,title:String(x.title||'Part 6'),passage:x.passage,
           items:x.items.map(it=>({type:TYPES6.includes(it.type)?it.type:'어휘',...mix(it.choices,it.answer),exp:String(it.exp||'')})),ko:null,src:'claude',created:now,seen:0,wrong:0});
       else dropped++}
-    for(const r of rows){const{id,...doc}=r;S.qs.set(id,r);upsert('questions',id,doc)}saved=rows.length;
+    for(const r of rows){const{id,...doc}=r;S.qs.set(id,r);upsert('questions',id,doc)}
+  return{saved:rows.length,dropped,ids:rows.map(r=>r.id)}}
+async function generate(part){if(!CFG.claudeKey)return;if(!navigator.onLine){toast('오프라인이야. 연결되면 만들어줘');return}const lv=Math.round(S.settings['lv'+part]);const weak=weakTypes(part);
+  const out=document.getElementById('qgo'),btn=document.getElementById('qg'),stop=document.getElementById('qstop');
+  btn.disabled=true;stop.hidden=false;out.hidden=false;out.textContent='Claude가 문제를 쓰는 중… (20~60초)';
+  genCtl=new AbortController();stop.onclick=()=>genCtl.abort();
+  try{const{text,stop:reason}=await claude(genPrompt(part,lv,weak),genCtl.signal);const{saved,dropped}=saveGen(part,lv,parseJSON(text,part===5?'array':'object'));
     // 해설에 "A가 정답" 처럼 보기 글자를 쓰면 섞은 뒤 틀린 말이 된다. 프롬프트에서 보기 글자 언급을 막아 둔다.
     const cut=reason==='max_tokens'?' 응답이 길어서 잘렸어.':'';
     out.textContent=saved?`${saved}개 저장했어 (레벨 ${lv}).${dropped?' 형식이 틀린 '+dropped+'개는 버렸어.':''}${cut}`:'형식이 맞는 결과가 없어서 저장하지 않았어.'+cut+' 다시 눌러줘.';
@@ -705,8 +708,10 @@ Reply with ONLY one JSON object, no other text:
 "strong":[{"area":"...","evidence":"..."}],
 "words":{"pattern":"자주 잊는 단어들의 공통점 (없으면 빈 문자열)","focus":["단어"]},
 "plan":[{"day":"1일차","task":"이 앱으로 20분 안에 할 일"}],
-"caveat":"이 진단의 데이터 한계 한 줄"}
+"caveat":"이 진단의 데이터 한계 한 줄",
+"drill":{"part5":[{"type":"유형 이름","trap":"the exact trap this learner falls for, in English (e.g. picks an adverb where an adjective must modify a noun)"}],"words":"what kind of words to add next to fix the weakness, in English"}}
 "weak" lists at most 4 items, worst first. For a question type, "area" must be one of: ${TYPES6.join(', ')}. "plan" has 5 to 7 entries using only what this app offers: 단어 학습, Part 5 풀기, Part 6 풀기, 유형별 5문제, 오답 다시 풀기.
+"drill" is used right after this to write new practice items and words for the learner. "drill.part5" has 1 to 3 entries, weakest first, "type" must be one of: ${TYPES5.join(', ')}. Base each "trap" on choices the learner actually picked; if there is too little data, choose the weakest types and their most common traps.
 DATA:
 ${JSON.stringify(data)}`}
 function rDiag(){const el=document.getElementById('diag');if(!el)return;const r=LS.get('omr.diag');
@@ -719,29 +724,78 @@ function rDiag(){const el=document.getElementById('diag');if(!el)return;const r=
     ${li(r.d.strong).length?`<div class="eyebrow">괜찮은 곳</div>${li(r.d.strong).map(s=>`<div><b>${esc(s.area||'')}</b> <span class="muted">${esc(s.evidence||'')}</span></div>`).join('')}`:''}
     ${r.d.words&&(r.d.words.pattern||li(r.d.words.focus).length)?`<div class="eyebrow">단어</div>${r.d.words.pattern?`<div>${esc(r.d.words.pattern)}</div>`:''}${li(r.d.words.focus).length?`<div class="row" style="gap:6px;flex-wrap:wrap">${li(r.d.words.focus).map(w=>`<span class="chip">${esc(w)}</span>`).join('')}</div>`:''}`:''}
     ${li(r.d.plan).length?`<div class="eyebrow">다음 며칠</div>${li(r.d.plan).map(p=>`<div class="line" style="align-items:flex-start"><span class="dk" style="min-width:44px">${esc(p.day||'')}</span><span style="flex:1">${esc(p.task||'')}</span></div>`).join('')}`:''}
-    ${r.d.caveat?`<div class="muted" style="font-size:13px">${esc(r.d.caveat)}</div>`:''}`
+    ${r.d.caveat?`<div class="muted" style="font-size:13px">${esc(r.d.caveat)}</div>`:''}
+    <div class="dg"><div class="eyebrow">진단대로 채운 문제·단어</div>${r.filled?`<div>${esc(new Date(r.filled.ts).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}))} · Part 5 문제 ${r.filled.q}개 · 단어 ${r.filled.w}개</div>${r.filled.w?'<div class="muted" style="font-size:13px">새 단어는 단어 학습에서 하루 새 단어 수만큼씩 나와.</div>':''}`:'<div class="muted" style="font-size:13px">아직 안 채웠어.</div>'}
+      <div class="row" style="gap:6px;margin-top:6px">${fillIds(r).length?`<button class="sm primary" id="dplay">맞춤 문제 ${fillIds(r).length}개 풀기</button>`:''}<button class="sm" id="dfill">${r.filled?'더 채우기':'채우기'}</button></div></div>`
     :`<div class="muted" style="font-size:13px">최근 풀이에서 고른 보기, 유형별 정답률, 자주 잊는 단어를 Claude에게 보내서 어디가 왜 약한지 진단받아. 풀이 ${DIAG_MIN}회 이상부터 할 수 있어.</div>`;
   el.innerHTML=`<div class="line"><b>Claude 정밀진단</b><span class="row" style="gap:6px"><button class="sm ghost" id="dstop" hidden>중지</button><button class="sm ${r?'':'primary'}" id="dgo">${r?'다시 진단':'진단받기'}</button></span></div>
     <div class="gen-out" id="dout" hidden></div>${body}`;
   el.querySelectorAll('[data-dt]').forEach(b=>b.onclick=()=>practiceType(b.dataset.dt));
-  if(!CFG.claudeKey){dgo.disabled=true;dout.hidden=false;dout.innerHTML='Claude API 키가 없어. <a href="#deck">단어장 탭 아래 설정</a>에서 넣어줘.'}
-  else dgo.onclick=diagnose}
-async function diagnose(){if(!navigator.onLine){toast('오프라인이야. 연결되면 해줘');return}
-  const out=document.getElementById('dout'),btn=document.getElementById('dgo'),stop=document.getElementById('dstop');
-  btn.disabled=true;out.hidden=false;out.textContent='풀이 기록을 모으는 중…';
-  diagCtl=new AbortController();stop.hidden=false;stop.onclick=()=>diagCtl.abort();
-  try{await flush();
-    const atts=await rest('attempts?select=at,qid,part,item,type,level,picked,answer,ok,review&order=at.desc&limit=150');
-    const data=diagData(atts||[]);
-    if(data.attempts.count<DIAG_MIN){out.textContent=`풀이 기록이 ${data.attempts.count}회라 진단하기엔 적어. ${DIAG_MIN}회 이상 풀고 다시 해줘.`;return}
-    out.textContent=`Claude가 풀이 ${data.attempts.count}회를 보는 중… (20~60초)`;
-    const{text}=await claude(diagPrompt(data),diagCtl.signal);const d=parseJSON(text,'object');
-    if(!d||typeof d!=='object'||Array.isArray(d)||!(d.summary||Array.isArray(d.weak)))throw{code:'json'};
-    LS.set('omr.diag',{ts:Date.now(),n:data.attempts.count,first:data.attempts.first_try,words:data.words.total,d});
-    toast('진단을 받았어');if(document.getElementById('diag'))rDiag()}
-  catch(e){const m=e&&e.name==='AbortError'?'중지했어.':e.code===401?'API 키가 올바르지 않아. 설정에서 다시 넣어줘.':e.code===429?'요청 한도에 걸렸어. 잠시 후 다시 해줘.':e.code===529||e.code===503?'Claude 서버가 바빠. 잠시 후 다시 해줘.':e.code==='json'?'응답 형식이 깨졌어. 다시 눌러줘.':'진단하지 못했어: '+String(e.message||e.code||'오류').slice(0,120);
-    if(out.isConnected)out.textContent=m}
-  finally{diagCtl=null;if(btn.isConnected){btn.disabled=false;stop.hidden=true}}}
+  const fb=document.getElementById('dfill'),pb=document.getElementById('dplay');
+  if(pb)pb.onclick=()=>{const ids=fillIds(r);location.hash='p5';startP5(false,ids)};
+  if(!CFG.claudeKey){dgo.disabled=true;if(fb)fb.disabled=true;dout.hidden=false;dout.innerHTML='Claude API 키가 없어. <a href="#deck">단어장 탭 아래 설정</a>에서 넣어줘.'}
+  else{dgo.onclick=()=>diagRun(true);if(fb)fb.onclick=()=>diagRun(false)}
+  if(diagCtl)diagBusy(true)}
+// 진단을 받고(full) 이어서 진단대로 문제·단어를 채운다. full=false 면 저장된 진단으로 채우기만.
+function diagBusy(on){const b=document.getElementById('dgo'),f=document.getElementById('dfill'),st=document.getElementById('dstop'),pl=document.getElementById('dplay');
+  if(b)b.disabled=on;if(f)f.disabled=on;if(pl)pl.disabled=on;if(st){st.hidden=!on;st.onclick=()=>diagCtl&&diagCtl.abort()}}
+function diagSay(t){const o=document.getElementById('dout');if(o){o.hidden=false;o.textContent=t}}
+function diagErr(e){return e.code===401?'API 키가 올바르지 않아. 설정에서 다시 넣어줘.':e.code===429?'요청 한도에 걸렸어. 잠시 후 다시 해줘.':e.code===529||e.code===503?'Claude 서버가 바빠. 잠시 후 다시 해줘.':(e.code===400||e.code===404)&&/model/i.test(e.message||'')?'모델 이름이 맞지 않아. 설정에서 다른 모델을 골라줘.':e.code==='json'?'응답 형식이 깨졌어. 다시 눌러줘.':String(e.message||e.code||'오류').slice(0,120)}
+function fillIds(r){return r&&r.filled&&Array.isArray(r.filled.qids)?r.filled.qids.filter(id=>S.qs.has(id)):[]}
+async function diagRun(full){if(!navigator.onLine){toast('오프라인이야. 연결되면 해줘');return}if(diagCtl)return;
+  diagCtl=new AbortController();const sig=diagCtl.signal;diagBusy(true);
+  try{let r=LS.get('omr.diag');
+    if(full){diagSay('풀이 기록을 모으는 중…');await flush();
+      const atts=await rest('attempts?select=at,qid,part,item,type,level,picked,answer,ok,review&order=at.desc&limit=150');
+      const data=diagData(atts||[]);
+      if(data.attempts.count<DIAG_MIN){diagSay(`풀이 기록이 ${data.attempts.count}회라 진단하기엔 적어. ${DIAG_MIN}회 이상 풀고 다시 해줘.`);return}
+      diagSay(`Claude가 풀이 ${data.attempts.count}회를 보는 중… (20~60초)`);
+      const{text}=await claude(diagPrompt(data),sig);const d=parseJSON(text,'object');
+      if(!d||typeof d!=='object'||Array.isArray(d)||!(d.summary||Array.isArray(d.weak)))throw{code:'json'};
+      r={ts:Date.now(),n:data.attempts.count,first:data.attempts.first_try,words:data.words.total,d};LS.set('omr.diag',r);
+      if(document.getElementById('diag'))rDiag()}
+    if(!r)return;
+    const res=await fillFromDiag(r,sig);
+    const prev=full||!r.filled?{q:0,w:0,qids:[]}:r.filled;
+    r.filled={ts:Date.now(),q:prev.q+res.q,w:prev.w+res.w,qids:[...(prev.qids||[]),...res.qids]};LS.set('omr.diag',r);
+    if(document.getElementById('diag'))rDiag();
+    diagSay(`${full?'진단 끝. ':''}Part 5 문제 ${res.q}개, 단어 ${res.w}개를 채웠어.${res.fail.length?' 실패: '+res.fail.join(' / '):''}`);
+    toast(`문제 ${res.q}개 · 단어 ${res.w}개 채웠어`)}
+  catch(e){diagSay(e&&e.name==='AbortError'?'중지했어.':(full?'진단하지 못했어: ':'')+diagErr(e))}
+  finally{diagCtl=null;diagBusy(false)}}
+// 진단의 drill(걸리는 함정, 필요한 단어)대로 Part 5 문제 8개와 단어 12개를 만든다. 한쪽이 실패해도 다른 쪽은 계속.
+const WPOS=['n','v','a','ad','prep','conj'];
+async function fillFromDiag(r,sig){const d=r.d||{},dr=d.drill||{};
+  const foc=(Array.isArray(dr.part5)?dr.part5:[]).filter(x=>x&&TYPES5.includes(x.type)&&typeof x.trap==='string'&&x.trap.trim());
+  const types=[...new Set(foc.length?foc.map(x=>x.type):(Array.isArray(d.weak)?d.weak:[]).map(w=>w&&w.area).filter(t=>TYPES5.includes(t)))].slice(0,3);
+  const traps=foc.slice(0,3).map(x=>x.type+': '+x.trap.trim()).join('; ');
+  const extra=traps?`This learner keeps falling for these traps: ${traps}. Make at least 6 of the 8 items test exactly these traps, with the tempting wrong form among the choices.`:'';
+  let q=0,w=0,qids=[];const fail=[];
+  diagSay(`약점 맞춤 Part 5 문제를 만드는 중… (20~60초)${types.length?' 유형: '+types.join(', '):''}`);
+  try{const lv=Math.round(S.settings.lv5);const{text}=await claude(genPrompt(5,lv,types,extra),sig);const g=saveGen(5,lv,parseJSON(text,'array'));q=g.saved;qids=g.ids;if(!q)fail.push('문제 형식이 안 맞아 저장 못 함')}
+  catch(e){if(e&&e.name==='AbortError')throw e;fail.push('문제: '+diagErr(e))}
+  diagSay(`문제 ${q}개 저장. 약점 맞춤 단어를 만드는 중… (20~60초)`);
+  try{const{text}=await claude(wordPrompt(d,dr),sig);w=saveWords(parseJSON(text,'array'));if(!w)fail.push('단어 형식이 안 맞거나 전부 이미 있는 단어')}
+  catch(e){if(e&&e.name==='AbortError')throw e;fail.push('단어: '+diagErr(e))}
+  return{q,w,qids,fail}}
+function wordPrompt(d,dr){const lv=Math.round(S.settings.lv5);
+  const focus=[dr.words,d.words&&d.words.pattern].filter(x=>typeof x==='string'&&x.trim()).join(' / ');
+  const forgot=(d.words&&Array.isArray(d.words.focus)?d.words.focus:[]).filter(x=>typeof x==='string').slice(0,10).join(', ');
+  const have=[...S.words.values()].map(x=>x.w.toLowerCase()).join(', ');
+  return`Write 12 TOEIC vocabulary entries for one Korean learner, chosen to fix their diagnosed weaknesses.
+Learner level: ${lv} (1=~600, 2=~750, 3=850+).
+What to target: ${focus||'common TOEIC business words at this level'}.
+${forgot?`They keep forgetting: ${forgot}. Include words that are easily confused with these or from the same word family, so they learn to tell them apart.`:''}
+Do not include any of these existing words: ${have}
+Reply with ONLY a JSON array of 12 objects, no other text:
+[{"w":"invoice","pos":"n","ko":"청구서, 송장","ex":"Please send the invoice to the accounting team by Friday.","lv":1}]
+"pos" is one of: ${WPOS.join(', ')}. "ko" is a short Korean meaning (1-3 meanings, comma separated). "ex" is one natural business English sentence (8-16 words) that contains the word. "lv" is 1, 2 or 3.`}
+function saveWords(res){const have=new Set([...S.words.values()].map(x=>x.w.trim().toLowerCase()));let n=0;const base=Date.now();
+  for(const x of Array.isArray(res)?res:[]){if(!x||typeof x.w!=='string'||typeof x.ko!=='string')continue;const w=x.w.trim();
+    if(!/^[A-Za-z][A-Za-z' -]{0,40}$/.test(w)||!x.ko.trim()||have.has(w.toLowerCase()))continue;
+    const[id,doc]=addWord({w,ko:x.ko,pos:WPOS.includes(x.pos)?x.pos:'',ex:typeof x.ex==='string'?x.ex:'',lv:[1,2,3].includes(+x.lv)?+x.lv:1});
+    doc.created=base+n;upsert('words',id,doc);have.add(w.toLowerCase());n++}
+  return n}
 
 /* ---------- 단어장 + 설정 ---------- */
 let deckQ='',deckLv='',delArm=null,editId=null;

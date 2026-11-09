@@ -22,6 +22,7 @@
 - `settings(lv5, lv6, daily_new)` — 행 하나
 - `attempts(id, at, qid, part, item, type, level, picked, answer, ok, review)` — P5/P6 풀이 1회마다 고른 보기. 계속 늘어나서 `loadAll`에서 읽지 않고 분석할 때 최근 것만 조회한다. `review`는 오답 다시 풀기(레벨 조정 안 함).
 - 분석 탭 "Claude 정밀진단"(`diagnose`): 최근 attempts 150개(고른 보기 글자 포함) + 유형별 정답률 + 자주 잊는 단어를 Claude에 보내 JSON 진단을 받는다. 풀이 10회 미만이면 보내지 않는다. 결과는 이 기기 localStorage(`omr.diag`)에만 남는다.
+  - 진단 JSON의 `drill`(걸리는 함정, 필요한 단어)대로 이어서 채운다(`fillFromDiag`): Part 5 8문제(`genPrompt`의 extra + `saveGen`), 단어 12개(`wordPrompt`/`saveWords`, 기존 단어와 중복 제외). 채운 문제 id는 `omr.diag.filled.qids`로 "맞춤 문제 풀기"에 쓴다.
 - 생성 문제는 `validP5`/`validP6`를 통과한 것만 저장하고, 보기 순서는 `mix()`로 코드에서 섞는다. 그래서 해설에 보기 글자(A~D)를 쓰지 않게 프롬프트로 막아 둔다.
 - PostgREST 일괄 upsert는 모든 행의 키가 같아야 한다 (seed.json의 questions는 빈 필드를 null로 채워 둠).
 
