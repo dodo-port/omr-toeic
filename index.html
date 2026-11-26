@@ -175,7 +175,7 @@ code{font-family:var(--f-mono);font-size:12px;background:var(--omr-soft);padding
   <a href="#home" data-v="home"><span class="m" aria-hidden="true">⌂</span>홈</a>
   <a href="#words" data-v="words"><span class="m" aria-hidden="true">Aa</span>단어</a>
   <a href="#p5" data-v="p5"><span class="m" aria-hidden="true">P5</span>문법·어휘</a>
-  <a href="#p6" data-v="p6"><span class="m" aria-hidden="true">P6</span>장문</a>
+  <a href="#lc" data-v="lc"><span class="m" aria-hidden="true">LC</span>듣기</a>
   <a href="#stats" data-v="stats"><span class="m" aria-hidden="true">%</span>분석</a>
   <a href="#deck" data-v="deck"><span class="m" aria-hidden="true">≡</span>단어장</a>
 </div></nav>
@@ -315,12 +315,12 @@ function lvText(x){return x.toFixed(1)+' · '+LVNAME[Math.round(x)].split(' · '
 function lvNext(x){const r=Math.round(x);return r>=3?'최고 단계야':`${LVNAME[r+1].split(' · ')[0]}까지 +${Math.max(0.01,r+0.5-x).toFixed(2)}`}
 
 /* ---------- 라우팅 ---------- */
-const VIEWS=['home','words','p5','p6','stats','deck'];
+const VIEWS=['home','words','p5','p6','lc','stats','deck'];
 function go(){delArm=null;const h=location.hash.slice(1);const v=VIEWS.includes(h)?h:'home';if(S.session&&S.session.view!==v)S.session=null;S.view=v;
   document.querySelectorAll('nav.tabs a').forEach(a=>a.dataset.v===v?a.setAttribute('aria-current','page'):a.removeAttribute('aria-current'));render()}
 window.addEventListener('hashchange',go);
 function render(){if(!CFG.url||!CFG.anon||!TOK)return rSetup();if(!S.ready){V.innerHTML='<div class="muted">불러오는 중…</div>';return}
-  ({home:rHome,words:rWords,p5:()=>rQuiz(5),p6:()=>rQuiz(6),stats:rStats,deck:rDeck})[S.view]()}
+  ({home:rHome,words:rWords,p5:()=>rQuiz(5),p6:()=>rQuiz(6),lc:rLC,stats:rStats,deck:rDeck})[S.view]()}
 
 /* ---------- 첫 설정 · 로그인 ---------- */
 function rSetup(err){
@@ -498,6 +498,7 @@ function rQuiz(part){
       <div class="tile"><div class="n">${n}</div><div class="l">보유 ${part===5?'문제':'지문'}</div></div></div>
     <div class="muted" style="font-size:13px">지금 난이도: <b style="color:var(--ink)">${LVNAME[Math.round(lv)]}</b> · ${lvNext(lv)}. 맞히면 +0.12, 틀리면 −0.15.${n&&!un?` <b style="color:var(--ink)">이 레벨 새 ${part===5?'문제':'지문'}가 없어서 다른 레벨이 섞여 나와.</b>`:''}</div>
     <div class="row"><button class="primary" id="qs" ${n?'':'disabled'}>${part===5?'10문제 풀기':'지문 1개 풀기'}</button>
+      ${part===5&&etsLeft().all?`<button id="qe">ETS 기출 10문제 (안 푼 것 ${etsLeft().un})</button>`:''}
       ${nw?`<button id="qw">틀린 ${part===5?'문제':'지문'} 다시 (${nw})</button>`:''}
       <select id="qlv" aria-label="레벨 직접 설정"><option value="">레벨 직접 설정</option><option value="1">1 · 기본</option><option value="2">2 · 중급</option><option value="3">3 · 고난도</option></select></div>
   </div>
@@ -508,11 +509,17 @@ function rQuiz(part){
     <div class="gen-out" id="qgo" hidden></div>
   </div></div>`;
   qs.onclick=()=>part===5?startP5():startP6();
+  if(document.getElementById('qe'))qe.onclick=()=>startP5(false,etsIds(10));
   if(nw)qw.onclick=()=>part===5?startP5(true):startP6(true);
   qlv.onchange=()=>{if(!qlv.value)return;S.settings['lv'+part]=+qlv.value;saveSettings();toast('레벨을 '+qlv.value+'로 바꿨어');rQuiz(part)};
   qg.onclick=()=>generate(part);
   if(!CFG.claudeKey){qg.disabled=true;qgo.hidden=false;qgo.innerHTML='Claude API 키가 없어. <a href="#deck">단어장 탭 아래 설정</a>에서 넣어줘.'}}
 
+// ETS 기출(책에서 옮긴 문제, src 'ets4'): 안 푼 것을 회차·번호 순서대로, 다 풀었으면 오래전에 푼 것부터
+const isEts=q=>q&&q.src==='ets4';
+function etsLeft(){const a=pool(5).filter(([,q])=>isEts(q));return{all:a.length,un:a.filter(([,q])=>!q.seen).length}}
+function etsIds(n){return pool(5).filter(([,q])=>isEts(q)).sort((a,b)=>(!!a[1].seen-!!b[1].seen)||(a[1].seen?(a[1].last_at||0)-(b[1].last_at||0):(a[1].created||0)-(b[1].created||0))).slice(0,n).map(x=>x[0])}
+const etsNo=id=>{const m=/^ets4-t(\d+)-(\d+)$/.exec(id);return m?`T${m[1]}-${+m[2]}`:''};
 // review: 오답 다시 풀기. 정답을 이미 본 문제라 레벨은 조정하지 않는다.
 function startP5(review,only){const ids=only||(review?shuffle(wrongIds(5)).slice(0,10):pick(5,10));if(!ids.length){toast(review?'다시 풀 틀린 문제가 없어':'풀 문제가 없어');return}
   S.session={view:'p5',list:ids,i:0,picked:null,ok:0,review:!!review,miss:[],lv0:S.settings.lv5};rP5()}
@@ -520,7 +527,7 @@ function rP5(){const s=S.session;if(s.i>=s.list.length)return finishQ(5);const i
   const done=s.picked!=null;const ok=done&&s.picked===q.answer;
   const stem=esc(q.stem).replace(/-{3,}/,'<span class="blank">______</span>');
   V.innerHTML=`<div class="stack"><div class="row" style="justify-content:space-between"><span class="eyebrow">${101+s.i}번 · ${s.i+1}/${s.list.length}</span>
-    <span class="row" style="gap:6px">${s.review?'<span class="chip">오답 다시</span>':''}<span class="chip lv${q.level||1}">L${q.level||1}</span>${done?`<span class="chip">${esc(q.type)}</span>`:''}<button class="sm ghost" id="pq">그만하기</button></span></div>
+    <span class="row" style="gap:6px">${s.review?'<span class="chip">오답 다시</span>':''}${isEts(q)?`<span class="chip">ETS ${etsNo(id)}</span>`:`<span class="chip lv${q.level||1}">L${q.level||1}</span>`}${done?`<span class="chip">${esc(q.type)}</span>`:''}<button class="sm ghost" id="pq">그만하기</button></span></div>
     <div class="progress"><i style="width:${s.i/s.list.length*100}%"></i></div>
     <div class="sheet stack"><div class="stem">${stem}</div>
     <div class="choices">${q.choices.map((c,i)=>{const cls=done?(i===q.answer?'ok':i===s.picked?'no':''):'';
@@ -563,6 +570,57 @@ function finishQ(part){const s=S.session;S.session=null;
   if(s.miss.length)f0.onclick=()=>part===5?startP5(true,s.miss):startP6(true,s.miss.slice(0,1));
   f1.onclick=()=>part===5?startP5(s.review):startP6(s.review);f2.onclick=()=>location.hash='stats'}
 
+/* ---------- 듣기 (Part 2·3·4, 책 음성) ----------
+   Part 2: 행 1개 = 문항 1개 (title=질문, choices=대답 3개, 보기 순서는 음성 순서라 섞지 않는다)
+   Part 3·4: 행 1개 = 세트 1개 (passage=대본, ko=대본 해석, items=문제 3개, img=시각 자료) */
+const LCN={2:'Part 2 · 질의응답',3:'Part 3 · 짧은 대화',4:'Part 4 · 짧은 담화'};
+function lcPick(part,n){return pool(part).sort((a,b)=>(!!a[1].seen-!!b[1].seen)||(a[1].seen?(a[1].last_at||0)-(b[1].last_at||0):(a[1].created||0)-(b[1].created||0))).slice(0,n).map(x=>x[0])}
+function rLC(){if(S.session&&S.session.view==='lc')return rLCq();
+  const cnt=p=>{const a=pool(p);return{n:a.length,un:a.filter(([,q])=>!q.seen).length}};
+  const c={2:cnt(2),3:cnt(3),4:cnt(4)};const wr=[2,3,4].flatMap(p=>wrongIds(p));
+  V.innerHTML=`<div class="stack"><div><div class="eyebrow">LC · 책 음성</div><h2>듣기 문제</h2></div>
+  ${c[2].n+c[3].n+c[4].n?'':'<div class="note">아직 듣기 문제가 없어. 단어장 탭 아래 설정의 "자료 가져오기"로 문제 파일과 음성을 올려줘.</div>'}
+  <div class="sheet stack">
+    ${[[2,'10문제'],[3,'대화 3개'],[4,'담화 3개']].map(([p,l])=>`<div class="line"><span><b>${LCN[p]}</b> <span class="muted" style="font-size:13px">안 푼 것 ${c[p].un} / ${c[p].n}</span></span><button class="sm${p===2?' primary':''}" id="lcp${p}" ${c[p].n?'':'disabled'}>${l}</button></div>`).join('')}
+    ${wr.length?`<div class="row"><button id="lcw">틀린 듣기 다시 (${wr.length})</button></div>`:''}
+    <div class="muted" style="font-size:13px">Part 2는 실제 시험처럼 보기 글자를 숨기고 소리로만 들려줘. 채점하면 대본과 해석이 나와.</div></div></div>`;
+  lcp2.onclick=()=>startLC(lcPick(2,10));lcp3.onclick=()=>startLC(lcPick(3,3));lcp4.onclick=()=>startLC(lcPick(4,3));
+  if(wr.length)lcw.onclick=()=>startLC(shuffle(wr).slice(0,10),true)}
+function startLC(ids,review){if(!ids.length)return toast('풀 문제가 없어');S.session={view:'lc',list:ids,i:0,ans:{},graded:false,ok:0,total:0,review:!!review,miss:[]};rLCq()}
+function rLCq(){const s=S.session;if(s.i>=s.list.length)return finishLC();const id=s.list[s.i];const q=S.qs.get(id);if(!q){s.i++;return rLCq()}
+  const g=s.graded,p2=q.part===2,no=etsNo(id);
+  const items=p2?[{type:q.type,choices:q.choices,answer:q.answer,exp:q.exp}]:(q.items||[]);
+  V.innerHTML=`<div class="stack"><div class="row" style="justify-content:space-between"><span class="eyebrow">${esc(LCN[q.part])} · ${s.i+1}/${s.list.length}</span>
+    <span class="row" style="gap:6px">${s.review?'<span class="chip">오답 다시</span>':''}${no?`<span class="chip">ETS ${no}</span>`:''}<button class="sm ghost" id="pq">그만하기</button></span></div>
+    <div class="progress"><i style="width:${s.i/s.list.length*100}%"></i></div>
+    <div class="sheet stack"><audio id="lca" controls preload="auto" style="width:100%"></audio><div class="muted" id="lcm" style="font-size:13px">음성 불러오는 중…</div>
+      ${q.img?'<img id="lci" alt="시각 자료" style="width:100%;border:1px solid var(--line);border-radius:6px">':''}</div>
+    ${items.map((it,k)=>{const a=s.ans[k];return`<div class="sheet stack">${p2?(g?`<div><b>${esc(q.title||'')}</b></div>`:''):`<div><b>${esc(it.q||'')}</b>${g&&it.q_ko?`<div class="muted" style="font-size:13px">${esc(it.q_ko)}</div>`:''}</div>`}
+      ${g?`<span class="chip" style="align-self:flex-start">${esc(it.type)}</span>`:''}
+      <div class="choices">${it.choices.map((ch,i)=>{const cls=g?(i===it.answer?'ok':i===a?'no':''):(i===a?'sel':'');
+        return`<button class="choice ${cls}" data-k="${k}" data-i="${i}" ${g?'disabled':''}><span class="bub">${LET[i]}</span><span class="t">${p2&&!g?'':esc(ch)}</span></button>`}).join('')}</div>
+      ${g?`<div class="exp ${a===it.answer?'ok':'no'}"><b>${a===it.answer?'정답':'오답 · 정답 ('+LET[it.answer]+')'}</b> ${esc(it.exp)}</div>`:''}</div>`}).join('')}
+    ${g&&(q.passage||q.ko)?`<div class="sheet stack"><div class="eyebrow">대본</div><div style="white-space:pre-wrap;font-size:14px">${esc(q.passage||'')}</div>${q.ko?`<div class="tr" style="white-space:pre-wrap;font-size:14px"><b>해석</b> ${esc(q.ko)}</div>`:''}</div>`:''}
+    ${g?`<button class="primary" id="lcn">${s.i+1<s.list.length?'다음':'결과 보기'}</button>`:`<button class="primary" id="lcg" ${Object.keys(s.ans).length===items.length?'':'disabled'}>채점하기</button>`}</div>`;
+  armTwice(pq,finishLC);
+  const au=document.getElementById('lca'),msg=document.getElementById('lcm');
+  if(q.audio)audioUrl(q.audio).then(u=>{if(!au.isConnected)return;au.src=u;msg.textContent=g?'다시 들을 수 있어':'재생 버튼을 눌러서 들어';if(!g)au.play().catch(()=>{})})
+    .catch(e=>{if(msg.isConnected)msg.textContent='음성을 못 불러왔어 ('+(e.code||'오류')+'). 자료 가져오기로 음성을 올렸는지 확인해줘.'});
+  else msg.textContent='이 문제에는 음성이 없어.';
+  if(q.img)audioUrl(q.img).then(u=>{const im=document.getElementById('lci');if(im)im.src=u}).catch(()=>{});
+  const grade=()=>{s.graded=true;const res=items.map((it,k)=>({type:it.type,ok:s.ans[k]===it.answer,picked:s.ans[k],answer:it.answer,item:k}));
+    res.forEach(r=>{s.total++;if(r.ok)s.ok++});if(res.some(r=>!r.ok))s.miss.push(id);recordQ(id,q,res,s.review);const y=window.scrollY;rLCq();window.scrollTo(0,y)};
+  // 고를 때 다시 그리지 않는다: 다시 그리면 음성이 처음부터 다시 시작된다
+  V.querySelectorAll('.choice').forEach(b=>b.onclick=()=>{if(s.graded)return;const k=+b.dataset.k;s.ans[k]=+b.dataset.i;
+    if(p2)return grade();
+    V.querySelectorAll(`.choice[data-k="${k}"]`).forEach(x=>x.classList.toggle('sel',x===b));
+    const gb=document.getElementById('lcg');if(gb)gb.disabled=Object.keys(s.ans).length!==items.length});
+  if(g)lcn.onclick=()=>{s.i++;s.ans={};s.graded=false;rLCq();window.scrollTo(0,0)};else lcg.onclick=grade}
+function finishLC(){const s=S.session;S.session=null;if(!s)return rLC();
+  V.innerHTML=`<div class="stack"><div><div class="eyebrow">듣기 세션 완료</div><h2>${s.total}문제 중 ${s.ok}개 정답${s.total?' · '+Math.round(s.ok/s.total*100)+'%':''}</h2></div>
+  <div class="row">${s.miss.length?`<button class="primary" id="f0">방금 틀린 ${s.miss.length}개 다시</button>`:''}<button id="f1">듣기 메뉴로</button></div></div>`;
+  if(s.miss.length)f0.onclick=()=>startLC(s.miss,true);f1.onclick=()=>rLC()}
+
 /* ---------- Claude API ---------- */
 let genCtl=null;
 async function claude(prompt,signal){
@@ -589,12 +647,15 @@ function validP6(x){if(!x||typeof x.passage!=='string'||!Array.isArray(x.items)|
   return x.items.filter(it=>it&&it.type==='문장삽입').length===1&&x.items.every(it=>it&&uniq4(it.choices)&&okAns(it.answer))}
 // 정답 위치는 코드에서 섞는다 (모델에게만 맡기면 한쪽으로 몰린다)
 function mix(choices,answer){const idx=shuffle([0,1,2,3]);return{choices:idx.map(i=>String(choices[i]).trim()),answer:idx.indexOf(answer)}}
+// 실제 기출 300문항(ETS 기출문제집 4, 10회분 Part 5) 분석 결과. 수치는 ets_private/p5_analysis.txt (개인 폴더, 저장소 밖)
+const P5SPEC=`Match the real exam (measured on 300 official ETS Part 5 items): vocabulary ~33% (verb, adjective, noun, adverb vocabulary in about equal shares), word-form slot ~26% (adjective / noun / adverb position, choices are four forms of one word family such as secure, security, securely, secured), preposition ~15% (including preposition vs conjunction and phrasal prepositions like in light of, prior to), pronoun ~7% (case: his/him/himself, indefinite: some/any/those), conjunction ~7% (adverb-clause conjunctions: once, until, wherever, whereas), verb form/tense ~5% (tense in time clauses, imperative base form), agreement/voice ~3%, to-infinitive/gerund ~3%, relative/comparative rare. Sentences are 9-23 words (average 14) about ordinary company life: orders, shipping, hiring, budgets, renovations, conferences, customer notices. The blank is usually mid-sentence. Distractors are plausible: same word family, similar meaning but wrong collocation, or wrong part of speech for the slot.`;
 function genPrompt(part,lv,weak,extra){
   const lvDesc={1:'Level 1 (target score ~600): common business vocabulary, clear grammar cues.',2:'Level 2 (target ~750): subtler grammar, collocations, distractors from the same word family.',3:'Level 3 (target 850+): advanced vocabulary, inversion, subjunctive, close-meaning distractors, long sentences.'}[lv];
   const focus=(weak.length?`Give extra weight to these weak question types: ${weak.join(', ')}.`:'Mix the question types.')+(extra?' '+extra:'');
   const existing=pool(part).slice(-30).map(([,q])=>part===5?q.stem:q.title).join('\n');
   return part===5?
 `Write 8 ORIGINAL TOEIC Part 5 (incomplete sentence) questions. ${lvDesc} ${focus}
+${P5SPEC}
 Allowed "type" values (Korean, use exactly): ${TYPES5.join(', ')}.
 Each question: one business-context English sentence with exactly one blank written as "-------", four answer choices, exactly one correct.
 Do not copy any published test item. Choices are shuffled after you answer, so in "exp" name choices by the word itself, never by letter (A-D) or position. Avoid repeating these existing stems:
@@ -797,6 +858,34 @@ function saveWords(res){const have=new Set([...S.words.values()].map(x=>x.w.trim
     doc.created=base+n;upsert('words',id,doc);have.add(w.toLowerCase());n++}
   return n}
 
+/* ---------- 개인용 자료 가져오기 ----------
+   내가 산 책에서 옮긴 문제·단어(json, {kind:'omr-import', questions:[], words:[]})와 음성(mp3)을 내 로그인으로 올린다.
+   책 내용은 공개 저장소에 두지 않는다. 음성은 Storage 비공개 버킷 audio, 경로는 '접두어/파일이름' (ets4_t01_007.mp3 -> ets4/ets4_t01_007.mp3). */
+const audioPath=name=>name.split('_')[0].toLowerCase()+'/'+name;
+async function storagePut(bucket,path,file){
+  const r=await fetch(`${CFG.url}/storage/v1/object/${bucket}/${path}`,{method:'POST',body:file,
+    headers:{apikey:CFG.anon,Authorization:'Bearer '+await token(),'x-upsert':'true','Content-Type':file.type||'audio/mpeg'}});
+  if(!r.ok)throw{code:r.status,message:(await r.text()).slice(0,200)}}
+async function importFiles(files,log){const say=t=>{log.hidden=false;log.textContent=t};let q=0,w=0,a=0;const bad=[];
+  for(const f of files.filter(f=>/\.json$/i.test(f.name))){
+    try{const d=JSON.parse(await f.text());if(!d||d.kind!=='omr-import')throw{message:'형식이 아님'};
+      if(Array.isArray(d.questions)&&d.questions.length){say(`${f.name}: 문제 ${d.questions.length}개 올리는 중…`);await upsertMany('questions',d.questions);q+=d.questions.length}
+      if(Array.isArray(d.words)&&d.words.length){say(`${f.name}: 단어 ${d.words.length}개 올리는 중…`);await upsertMany('words',d.words);w+=d.words.length}}
+    catch(e){bad.push(f.name+' ('+(e.message||e.code||'오류')+')')}}
+  const mp3=files.filter(f=>/\.(mp3|png)$/i.test(f.name));let i=0,done=0;
+  const worker=async()=>{while(i<mp3.length){const f=mp3[i++];
+    try{await storagePut('audio',audioPath(f.name),f);a++}catch(e){bad.push(f.name+' ('+(e.code||'오류')+')')}
+    say(`음성 ${++done}/${mp3.length} 올리는 중…`)}};
+  await Promise.all([worker(),worker(),worker(),worker()]);
+  if(q||w){say('불러오는 중…');await loadAll()}
+  say(`끝. 문제 ${q}개, 단어 ${w}개, 음성 ${a}개를 올렸어.${bad.length?'\n실패 '+bad.length+'개: '+bad.slice(0,5).join(', '):''}`);
+  toast('가져오기 끝')}
+// 음성 재생용: 비공개 파일이라 로그인 토큰으로 받아서 blob 주소로 바꾼다 (한 번 받은 것은 기억)
+const AUD=new Map();
+async function audioUrl(path){if(AUD.has(path))return AUD.get(path);
+  const r=await fetch(`${CFG.url}/storage/v1/object/authenticated/audio/${path}`,{headers:{apikey:CFG.anon,Authorization:'Bearer '+await token()}});
+  if(!r.ok)throw{code:r.status,message:'음성을 못 받았어'};const u=URL.createObjectURL(await r.blob());AUD.set(path,u);return u}
+
 /* ---------- 단어장 + 설정 ---------- */
 let deckQ='',deckLv='',delArm=null,editId=null;
 function slug(w){return(w.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40)||'w')+'-'+Math.random().toString(36).slice(2,6)}
@@ -840,6 +929,10 @@ function rDeck(){const st={new:'새',learning:'학습 중',mature:'장기'};
     <label class="f">Claude API 키 (이 기기에만 저장)<input id="ck" type="password" placeholder="sk-ant-..." value="${esc(CFG.claudeKey||'')}" autocomplete="off"></label>
     <label class="f">문제 생성 모델<select id="cm">${MODELS.map(([v,l])=>`<option value="${v}" ${(CFG.model||MODELS[0][0])===v?'selected':''}>${l}</option>`).join('')}</select></label>
     <div class="row"><button id="cks" class="sm">API 설정 저장</button></div>
+    <details><summary style="cursor:pointer;font-size:14px">자료 가져오기 (개인용)</summary><div class="stack" style="margin-top:6px">
+      <div class="muted" style="font-size:13px">책에서 옮긴 문제·단어 파일(.json)과 음성(.mp3)을 내 계정으로 올려. 여러 개를 한 번에 골라도 돼.</div>
+      <input id="imf" type="file" multiple accept=".json,.mp3,.png,application/json,audio/mpeg,image/png">
+      <div class="gen-out" id="imo" hidden></div></div></details>
     <div class="muted" style="font-size:12px">Supabase: ${esc(CFG.url||'')} · ${esc(CFG.email||'')}</div>
     <div class="row"><button id="lo" class="sm ghost">로그아웃</button></div>
   </div></div>`;
@@ -850,6 +943,8 @@ function rDeck(){const st={new:'새',learning:'학습 중',mature:'장기'};
     for(const r of rows){const{id,...doc}=r;upsert('words',id,doc)}toast(rows.length+'개 추가했어');rDeck()};
   dns.onclick=()=>{S.settings.daily_new=clamp(parseInt(dn.value)||0,0,100);saveSettings();toast('하루 새 단어 '+S.settings.daily_new+'개')};
   cks.onclick=()=>{CFG={...CFG,claudeKey:ck.value.trim(),model:cm.value};LS.set('omr.cfg',CFG);toast('API 설정을 저장했어')};
+  imf.onchange=async()=>{const files=[...imf.files];if(!files.length)return;if(!navigator.onLine)return toast('오프라인이야. 연결되면 해줘');
+    imf.disabled=true;try{await importFiles(files,imo)}finally{imf.disabled=false;imf.value=''}};
   lo.onclick=async()=>{await flush();if(OUT.length)return toast('아직 못 보낸 기록이 '+OUT.length+'개 있어. 연결된 뒤에 로그아웃해줘');TOK=null;LS.del('omr.tok');S.ready=false;render()};
   dq.oninput=()=>{deckQ=dq.value;const pos=dq.selectionStart;rDeck();const n=document.getElementById('dq');n.focus();n.setSelectionRange(pos,pos)};
   dl.onchange=()=>{deckLv=dl.value;rDeck()};
