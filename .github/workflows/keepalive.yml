@@ -1,0 +1,34 @@
+# Supabase free plan pauses a project after 7 days without requests.
+# This calls rpc/keepalive (returns 1, reads no table) every 3 days to keep it awake.
+# Needs two repository secrets: SUPABASE_URL, SUPABASE_ANON_KEY (publishable key).
+name: keep-supabase-awake
+
+on:
+  schedule:
+    - cron: '0 0 */3 * *'   # 00:00 UTC (09:00 KST) on day 1, 4, 7, ... of each month
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call rpc/keepalive
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "Missing secrets SUPABASE_URL / SUPABASE_ANON_KEY"; exit 1
+          fi
+          for i in 1 2 3; do
+            code=$(curl -s -o body.txt -w '%{http_code}' -m 30 -X POST \
+              "${SUPABASE_URL%/}/rest/v1/rpc/keepalive" \
+              -H "apikey: $SUPABASE_ANON_KEY" \
+              -H "Content-Type: application/json" -d '{}' || true)
+            echo "try $i: HTTP $code $(cat body.txt 2>/dev/null)"
+            [ "$code" = "200" ] && exit 0
+            sleep 20
+          done
+          echo "keepalive failed (project may already be paused: restore it in the Supabase dashboard)"
+          exit 1

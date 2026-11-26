@@ -8,6 +8,7 @@
 - `manifest.webmanifest`, `icons/` — 홈 화면 설치용.
 - `data/seed.json` — 첫 실행 때 넣는 기본 단어 60개, Part 5 18문제, Part 6 3지문 (전부 오리지널 작성).
 - `supabase/schema.sql` — 테이블 + RLS. 스키마 변경은 `supabase/migrations/NNN_설명.sql`로 추가하고 schema.sql도 같이 갱신.
+- `.github/workflows/keepalive.yml` — 무료 요금제는 7일 요청이 없으면 프로젝트가 멈춘다(2026-11-26 실제로 멈춤). 사흘마다 `rpc/keepalive`(테이블 안 읽고 1 반환)를 부른다. 저장소 secrets `SUPABASE_URL`, `SUPABASE_ANON_KEY` 필요. 저장소에 60일 활동이 없으면 GitHub이 예약 실행을 끈다.
 - `scriptable/omr-toeic-widget.js` — Scriptable 위젯(잠금화면 단어 표시) + 탭 시 4지선다 퀴즈.
 
 ## 데이터 모델 (Supabase, 모든 테이블 `user_id` + RLS `user_id = auth.uid()`)

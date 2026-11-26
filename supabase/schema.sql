@@ -133,3 +133,10 @@ create policy own_rows on public.attempts for all to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
 grant select, insert, update, delete on public.attempts to authenticated;
 revoke all on public.attempts from anon;
+
+-- 무료 요금제 7일 멈춤 방지 (migrations/004_keepalive.sql 과 같음)
+-- GitHub Actions(.github/workflows/keepalive.yml)가 사흘마다 부른다. 테이블은 읽지 않는다.
+create or replace function public.keepalive()
+returns int language sql stable as $$ select 1 $$;
+revoke all on function public.keepalive() from public;
+grant execute on function public.keepalive() to anon, authenticated;
