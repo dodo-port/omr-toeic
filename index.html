@@ -866,19 +866,32 @@ async function storagePut(bucket,path,file){
   const r=await fetch(`${CFG.url}/storage/v1/object/${bucket}/${path}`,{method:'POST',body:file,
     headers:{apikey:CFG.anon,Authorization:'Bearer '+await token(),'x-upsert':'true','Content-Type':file.type||'audio/mpeg'}});
   if(!r.ok)throw{code:r.status,message:(await r.text()).slice(0,200)}}
+// zip 은 JSZip(cdnjs)으로 기기 안에서 풀어서 안의 json·mp3·png 를 같은 방식으로 올린다 (폰에서 파일 수백 개를 고르지 않게)
+let jszipP=null;
+const loadJSZip=()=>jszipP=jszipP||new Promise((ok,no)=>{if(window.JSZip)return ok(window.JSZip);const s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';s.onload=()=>ok(window.JSZip);s.onerror=()=>{jszipP=null;no({message:'압축 풀기 도구를 못 불러왔어'})};document.head.appendChild(s)});
+const MEDIA={mp3:'audio/mpeg',png:'image/png'};
 async function importFiles(files,log){const say=t=>{log.hidden=false;log.textContent=t};let q=0,w=0,a=0;const bad=[];
-  for(const f of files.filter(f=>/\.json$/i.test(f.name))){
+  const jsons=files.filter(f=>/\.json$/i.test(f.name)).map(f=>({name:f.name,text:()=>f.text()}));
+  const media=files.filter(f=>/\.(mp3|png)$/i.test(f.name)).map(f=>({name:f.name,blob:()=>f}));
+  for(const z of files.filter(f=>/\.zip$/i.test(f.name))){
+    try{say(`${z.name} 여는 중…`);const JSZip=await loadJSZip();const zip=await JSZip.loadAsync(z);
+      zip.forEach((path,e)=>{if(e.dir)return;const name=path.split('/').pop();const ext=(name.split('.').pop()||'').toLowerCase();
+        if(ext==='json')jsons.push({name,text:()=>e.async('string')});
+        else if(MEDIA[ext])media.push({name,blob:async()=>new Blob([await e.async('arraybuffer')],{type:MEDIA[ext]})})})}
+    catch(e){bad.push(z.name+' ('+(e.message||'열 수 없음')+')')}}
+  for(const f of jsons){
     try{const d=JSON.parse(await f.text());if(!d||d.kind!=='omr-import')throw{message:'형식이 아님'};
       if(Array.isArray(d.questions)&&d.questions.length){say(`${f.name}: 문제 ${d.questions.length}개 올리는 중…`);await upsertMany('questions',d.questions);q+=d.questions.length}
       if(Array.isArray(d.words)&&d.words.length){say(`${f.name}: 단어 ${d.words.length}개 올리는 중…`);await upsertMany('words',d.words);w+=d.words.length}}
     catch(e){bad.push(f.name+' ('+(e.message||e.code||'오류')+')')}}
-  const mp3=files.filter(f=>/\.(mp3|png)$/i.test(f.name));let i=0,done=0;
-  const worker=async()=>{while(i<mp3.length){const f=mp3[i++];
-    try{await storagePut('audio',audioPath(f.name),f);a++}catch(e){bad.push(f.name+' ('+(e.code||'오류')+')')}
-    say(`음성 ${++done}/${mp3.length} 올리는 중…`)}};
+  let i=0,done=0;
+  const worker=async()=>{while(i<media.length){const f=media[i++];
+    try{await storagePut('audio',audioPath(f.name),await f.blob());a++}catch(e){bad.push(f.name+' ('+(e.code||e.message||'오류')+')')}
+    say(`음성·그림 ${++done}/${media.length} 올리는 중… (앱을 닫지 마)`)}};
   await Promise.all([worker(),worker(),worker(),worker()]);
   if(q||w){say('불러오는 중…');await loadAll()}
-  say(`끝. 문제 ${q}개, 단어 ${w}개, 음성 ${a}개를 올렸어.${bad.length?'\n실패 '+bad.length+'개: '+bad.slice(0,5).join(', '):''}`);
+  say(`끝. 문제 ${q}개, 단어 ${w}개, 음성·그림 ${a}개를 올렸어.${bad.length?'\n실패 '+bad.length+'개: '+bad.slice(0,5).join(', ')+' (실패한 것만 다시 골라 올리면 돼)':''}`);
   toast('가져오기 끝')}
 // 음성 재생용: 비공개 파일이라 로그인 토큰으로 받아서 blob 주소로 바꾼다 (한 번 받은 것은 기억)
 const AUD=new Map();
@@ -930,8 +943,8 @@ function rDeck(){const st={new:'새',learning:'학습 중',mature:'장기'};
     <label class="f">문제 생성 모델<select id="cm">${MODELS.map(([v,l])=>`<option value="${v}" ${(CFG.model||MODELS[0][0])===v?'selected':''}>${l}</option>`).join('')}</select></label>
     <div class="row"><button id="cks" class="sm">API 설정 저장</button></div>
     <details><summary style="cursor:pointer;font-size:14px">자료 가져오기 (개인용)</summary><div class="stack" style="margin-top:6px">
-      <div class="muted" style="font-size:13px">책에서 옮긴 문제·단어 파일(.json)과 음성(.mp3)을 내 계정으로 올려. 여러 개를 한 번에 골라도 돼.</div>
-      <input id="imf" type="file" multiple accept=".json,.mp3,.png,application/json,audio/mpeg,image/png">
+      <div class="muted" style="font-size:13px">책에서 옮긴 문제·단어 파일(.json)과 음성·그림(.mp3, .png, 또는 그것을 묶은 .zip)을 내 계정으로 올려. 여러 개를 한 번에 골라도 돼. 올리는 동안 앱을 닫지 마.</div>
+      <input id="imf" type="file" multiple accept=".json,.mp3,.png,.zip,application/json,audio/mpeg,image/png,application/zip">
       <div class="gen-out" id="imo" hidden></div></div></details>
     <div class="muted" style="font-size:12px">Supabase: ${esc(CFG.url||'')} · ${esc(CFG.email||'')}</div>
     <div class="row"><button id="lo" class="sm ghost">로그아웃</button></div>
