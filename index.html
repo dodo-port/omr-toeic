@@ -307,7 +307,15 @@ function wordStatus(id){const s=S.srs.get(id);if(!s)return'new';return s.ivl>=21
 /* ---------- 통계 ---------- */
 function typeStats(part){const agg={};for(const d of S.days.values()){for(const[k,v]of Object.entries(d.q||{})){const[p,t]=k.split(':');if(+p!==part)continue;
   agg[t]=agg[t]||{n:0,c:0};agg[t].n+=v.n;agg[t].c+=v.c}}return agg}
-function weakTypes(part){return Object.entries(typeStats(part)).filter(([,v])=>v.n>=3).sort((a,b)=>a[1].c/a[1].n-b[1].c/b[1].n).slice(0,3).map(x=>x[0])}
+// 약점 판단용: 최근 기록에 무게. 하루 기록의 무게 = 0.5^(지난 날 수/14), 2주 전 기록은 절반, 4주 전은 1/4.
+// n·c는 실제 문항 수(3문항 이상 조건과 표시용), wn·wc는 무게를 곱한 값(정답률 계산용). 분석 탭 막대는 typeStats(전체 누적) 그대로.
+const HALF=14;
+function recentStats(part){const agg={};const today=Date.parse(todayId()+'T00:00:00');
+  for(const[key,d]of S.days){const age=Math.max(0,Math.round((today-Date.parse((d.date||key)+'T00:00:00'))/DAY));const w=Number.isFinite(age)?Math.pow(0.5,age/HALF):1;
+    for(const[k,v]of Object.entries(d.q||{})){const[p,t]=k.split(':');if(+p!==part)continue;
+      const o=agg[t]=agg[t]||{n:0,c:0,wn:0,wc:0};o.n+=v.n;o.c+=v.c;o.wn+=v.n*w;o.wc+=v.c*w}}return agg}
+const rRate=v=>v.wn?v.wc/v.wn:0;
+function weakTypes(part){return Object.entries(recentStats(part)).filter(([,v])=>v.n>=3).sort((a,b)=>rRate(a[1])-rRate(b[1])).slice(0,3).map(x=>x[0])}
 function streak(){let n=0;const t=new Date();for(let i=0;i<400;i++){const d=S.days.get(todayId(new Date(t.getTime()-i*DAY)));
   const act=d&&(d.words_reviewed||Object.values(d.q||{}).some(v=>v.n));if(act)n++;else if(i>0)break}return n}
 function lvText(x){return x.toFixed(1)+' · '+LVNAME[Math.round(x)].split(' · ')[0]}
@@ -475,8 +483,8 @@ function pick(part,n,type){const lv=Math.round(S.settings['lv'+part]);
   const ranked=pool(part).filter(([,q])=>!type||q.type===type).map(([id,q])=>[id,Math.abs((q.level||1)-lv)*10+(q.seen?(q.last_ok?6:2):0)+Math.random()*2]).sort((a,b)=>a[1]-b[1]).map(x=>x[0]);
   return type?ranked.slice(0,n):withFocus(ranked,part,n)}
 // 약점 위주 출제. 집중 유형 = 3번 이상 푼 유형 중 정답률 낮은 3개(weakTypes) 가운데 내 평균 정답률보다 낮은 것. 풀이 10회 전에는 없음.
-function focusTypes(part){const st=typeStats(part);let n=0,c=0;for(const v of Object.values(st)){n+=v.n;c+=v.c}if(n<10)return[];
-  return weakTypes(part).filter(t=>st[t].c/st[t].n<c/n)}
+function focusTypes(part){const st=recentStats(part);let n=0,wn=0,wc=0;for(const v of Object.values(st)){n+=v.n;wn+=v.wn;wc+=v.wc}if(n<10||!wn)return[];
+  return weakTypes(part).filter(t=>rRate(st[t])<wc/wn)}
 const qTypes=q=>q&&q.items&&q.items.length?q.items.map(i=>i.type):[q&&q.type];
 const FOCUS=0.4;const focusN=n=>Math.max(1,Math.round(n*FOCUS));
 // ranked: 원래 규칙으로 줄 세운 id. 집중 유형 문제를 줄 앞에서부터 n의 40%만큼 먼저 담고, 나머지는 원래 순서대로 채운다. 내는 순서는 원래 순서.
@@ -718,9 +726,9 @@ function rStats(){const bars=part=>{const st=typeStats(part);const rows=Object.e
   const active=days.filter(d=>d.w||d.q).length;
   // 맨 위 한 줄: 가장 약한 유형과 이번 주/지난주 P5 정답률 (표본이 적으면 말하지 않는다)
   const wk=(from,to)=>{let n=0,c=0;for(let i=from;i<to;i++){const d=S.days.get(todayId(new Date(Date.now()-i*DAY)))||{};for(const[k,v]of Object.entries(d.q||{}))if(k.startsWith('5:')){n+=v.n;c+=v.c}}return{n,c}};
-  const w1=wk(0,7),w0=wk(7,14);const weak5=weakTypes(5)[0];const ws=weak5&&typeStats(5)[weak5];
+  const w1=wk(0,7),w0=wk(7,14);const weak5=weakTypes(5)[0];const ws=weak5&&recentStats(5)[weak5];
   const pct=o=>Math.round(o.c/o.n*100)+'%';
-  const head=ws?`<div class="sheet stack"><div class="line"><span>가장 약한 유형 <b>${esc(weak5)}</b> ${pct(ws)} <span class="muted">(n=${ws.n})</span></span><button class="sm primary" id="sweak">${esc(weak5)} 5문제</button></div>
+  const head=ws?`<div class="sheet stack"><div class="line"><span>가장 약한 유형 <b>${esc(weak5)}</b> 최근 기준 ${Math.round(rRate(ws)*100)}% <span class="muted">(전체 ${pct(ws)}, n=${ws.n})</span></span><button class="sm primary" id="sweak">${esc(weak5)} 5문제</button></div>
     ${w1.n>=5?`<div class="muted" style="font-size:13px">P5 정답률 이번 주 ${pct(w1)} (n=${w1.n})${w0.n>=5?' · 지난주 '+pct(w0)+' (n='+w0.n+')':''}</div>`:''}</div>`
     :`<div class="note">유형별로 3문제 이상 풀면 가장 약한 유형을 여기 보여줄게.</div>`;
   let nw=0,ln=0,mt=0;for(const id of S.words.keys()){const s=wordStatus(id);s==='new'?nw++:s==='mature'?mt++:ln++}

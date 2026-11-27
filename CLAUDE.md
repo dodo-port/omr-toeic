@@ -27,7 +27,7 @@
 - `attempts(id, at, qid, part, item, type, level, picked, answer, ok, review)` — P5/P6 풀이 1회마다 고른 보기. 계속 늘어나서 `loadAll`에서 읽지 않고 분석할 때 최근 것만 조회한다. `review`는 오답 다시 풀기(레벨 조정 안 함).
 - 분석 탭 "Claude 정밀진단"(`diagnose`): 최근 attempts 150개(고른 보기 글자 포함) + 유형별 정답률 + 자주 잊는 단어를 Claude에 보내 JSON 진단을 받는다. 풀이 10회 미만이면 보내지 않는다. 결과는 이 기기 localStorage(`omr.diag`)에만 남는다.
   - 진단 JSON의 `drill`(걸리는 함정, 필요한 단어)대로 이어서 채운다(`fillFromDiag`): Part 5 8문제(`genPrompt`의 extra + `saveGen`), 단어 12개(`wordPrompt`/`saveWords`, 기존 단어와 중복 제외). 채운 문제 id는 `omr.diag.filled.qids`로 "맞춤 문제 풀기"에 쓴다.
-- 약점 위주 출제(`withFocus`): Part 5 "10문제"(`pick`, 유형 지정 없을 때), ETS 기출(`etsIds`), 듣기(`lcPick`)는 원래 순서로 줄 세운 뒤 집중 유형 문제를 앞에서부터 40%(`FOCUS`) 먼저 담는다. 집중 유형(`focusTypes`) = `weakTypes` 중 그 파트 평균 정답률보다 낮은 것, 풀이 10회 전에는 없음. Part 3·4 세트는 items 유형 중 하나라도 맞으면 해당.
+- 약점 위주 출제(`withFocus`): Part 5 "10문제"(`pick`, 유형 지정 없을 때), ETS 기출(`etsIds`), 듣기(`lcPick`)는 원래 순서로 줄 세운 뒤 집중 유형 문제를 앞에서부터 40%(`FOCUS`) 먼저 담는다. 집중 유형(`focusTypes`) = `weakTypes` 중 그 파트 평균 정답률보다 낮은 것, 풀이 10회 전에는 없음. `weakTypes`는 `recentStats`(하루 기록 무게 0.5^(지난 날 수/14), `HALF`)로 정답률을 매기고 3문항 조건은 실제 수로 본다. 분석 탭 유형별 막대와 Claude 진단의 누적 통계는 `typeStats`(무게 없음) 그대로. Part 3·4 세트는 items 유형 중 하나라도 맞으면 해당.
 - 생성 문제는 `validP5`/`validP6`를 통과한 것만 저장하고, 보기 순서는 `mix()`로 코드에서 섞는다. 그래서 해설에 보기 글자(A~D)를 쓰지 않게 프롬프트로 막아 둔다.
 - PostgREST 일괄 upsert는 모든 행의 키가 같아야 한다 (seed.json의 questions는 빈 필드를 null로 채워 둠).
 
