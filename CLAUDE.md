@@ -9,7 +9,7 @@
 - `data/seed.json` — 첫 실행 때 넣는 기본 단어 60개, Part 5 18문제, Part 6 3지문 (전부 오리지널 작성).
 - `supabase/schema.sql` — 테이블 + RLS. 스키마 변경은 `supabase/migrations/NNN_설명.sql`로 추가하고 schema.sql도 같이 갱신.
 - `.github/workflows/keepalive.yml` — 무료 요금제는 7일 요청이 없으면 프로젝트가 멈춘다(2026-11-26 실제로 멈춤). 사흘마다 `rpc/keepalive`(테이블 안 읽고 1 반환)를 부른다. 저장소 secrets `SUPABASE_URL`, `SUPABASE_ANON_KEY` 필요. 저장소에 60일 활동이 없으면 GitHub이 예약 실행을 끈다.
-- 책 기출(ETS 토익 정기시험 기출문제집 4, 사용자가 산 책): 옮긴 데이터는 **저장소 밖** `../ets_private/`에만 둔다(공개 저장소에 책 내용 금지). 앱 설정의 "자료 가져오기"(`importFiles`)가 `{kind:'omr-import',questions,words}` json과 mp3/png를 사용자 로그인으로 올린다. 문제 id `ets4-t{회}-{번호}`, src `ets4`.
+- 책 기출(ETS 토익 정기시험 기출문제집 4, 사용자가 산 책): 옮긴 데이터는 **저장소 밖** `../ets_private/`에만 둔다(공개 저장소에 책 내용 금지). 앱 설정의 "자료 가져오기"(`importFiles`)가 `{kind:'omr-import',questions,words}` json과 mp3/png(또는 그것을 묶은 zip, JSZip을 필요할 때 cdnjs에서 불러 기기 안에서 푼다)를 사용자 로그인으로 올린다. 올릴 파일 묶음은 `../ets_private/올리기/`, 설명은 `../ets_private/올리는법.md`. 문제 id `ets4-t{회}-{번호}`, src `ets4`.
   - 듣기: `questions.part` 2·3·4, `audio`/`img`는 Storage 비공개 버킷 `audio` 경로(`ets4/ets4_tNN_QQQ.mp3`). Part 2는 행=문항(choices 3개, 섞지 않음), Part 3·4는 행=세트(passage=대본, items=문제 3개). 화면은 `#lc`(`rLC`/`rLCq`). 탭의 P6 자리를 듣기로 바꿨다(#p6 주소는 남아 있음).
   - Part 5 생성 프롬프트의 `P5SPEC`은 기출 300문항 유형 분포 분석 결과다.
 - `scriptable/omr-toeic-widget.js` — Scriptable 위젯(잠금화면 단어 표시) + 탭 시 4지선다 퀴즈.
