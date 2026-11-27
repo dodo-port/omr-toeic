@@ -472,7 +472,18 @@ document.addEventListener('keydown',e=>{const s=S.session;if(e.ctrlKey||e.metaKe
 /* ---------- Part 5 / 6 ---------- */
 function pool(part){return[...S.qs.entries()].filter(([,q])=>q.part===part)}
 function pick(part,n,type){const lv=Math.round(S.settings['lv'+part]);
-  return pool(part).filter(([,q])=>!type||q.type===type).map(([id,q])=>[id,Math.abs((q.level||1)-lv)*10+(q.seen?(q.last_ok?6:2):0)+Math.random()*2]).sort((a,b)=>a[1]-b[1]).slice(0,n).map(x=>x[0])}
+  const ranked=pool(part).filter(([,q])=>!type||q.type===type).map(([id,q])=>[id,Math.abs((q.level||1)-lv)*10+(q.seen?(q.last_ok?6:2):0)+Math.random()*2]).sort((a,b)=>a[1]-b[1]).map(x=>x[0]);
+  return type?ranked.slice(0,n):withFocus(ranked,part,n)}
+// 약점 위주 출제. 집중 유형 = 3번 이상 푼 유형 중 정답률 낮은 3개(weakTypes) 가운데 내 평균 정답률보다 낮은 것. 풀이 10회 전에는 없음.
+function focusTypes(part){const st=typeStats(part);let n=0,c=0;for(const v of Object.values(st)){n+=v.n;c+=v.c}if(n<10)return[];
+  return weakTypes(part).filter(t=>st[t].c/st[t].n<c/n)}
+const qTypes=q=>q&&q.items&&q.items.length?q.items.map(i=>i.type):[q&&q.type];
+const FOCUS=0.4;const focusN=n=>Math.max(1,Math.round(n*FOCUS));
+// ranked: 원래 규칙으로 줄 세운 id. 집중 유형 문제를 줄 앞에서부터 n의 40%만큼 먼저 담고, 나머지는 원래 순서대로 채운다. 내는 순서는 원래 순서.
+function withFocus(ranked,part,n){const ft=focusTypes(part);if(!ft.length)return ranked.slice(0,n);
+  const hit=ranked.filter(id=>qTypes(S.qs.get(id)).some(t=>ft.includes(t))).slice(0,focusN(n));const h=new Set(hit);
+  const keep=new Set([...hit,...ranked.filter(id=>!h.has(id)).slice(0,n-hit.length)]);return ranked.filter(id=>keep.has(id))}
+const focusNote=(part,n,unit)=>{const ft=focusTypes(part);return ft.length?`약한 유형 <b style="color:var(--ink)">${ft.map(esc).join(', ')}</b>: ${n}${unit} 중 ${focusN(n)}${unit}는 이 유형으로 내.`:''};
 function unseenAt(part){const lv=Math.round(S.settings['lv'+part]);return pool(part).filter(([,q])=>!q.seen&&(q.level||1)===lv).length}
 function adjustLv(part,q,ok){const k='lv'+part;const lv=S.settings[k];S.settings[k]=clamp(lv+(ok?((q.level||1)>=Math.round(lv)?0.12:0.05):-0.15),1,3)}
 // 마지막으로 풀었을 때 틀린 문제 (오래된 것부터)
@@ -496,7 +507,7 @@ function rQuiz(part){
       <div class="tile"><div class="n">${lv.toFixed(1)}</div><div class="l">내 레벨 (1~3)</div></div>
       <div class="tile"><div class="n">${un}</div><div class="l">현재 레벨 새 ${part===5?'문제':'지문'}</div></div>
       <div class="tile"><div class="n">${n}</div><div class="l">보유 ${part===5?'문제':'지문'}</div></div></div>
-    <div class="muted" style="font-size:13px">지금 난이도: <b style="color:var(--ink)">${LVNAME[Math.round(lv)]}</b> · ${lvNext(lv)}. 맞히면 +0.12, 틀리면 −0.15.${n&&!un?` <b style="color:var(--ink)">이 레벨 새 ${part===5?'문제':'지문'}가 없어서 다른 레벨이 섞여 나와.</b>`:''}</div>
+    <div class="muted" style="font-size:13px">지금 난이도: <b style="color:var(--ink)">${LVNAME[Math.round(lv)]}</b> · ${lvNext(lv)}. 맞히면 +0.12, 틀리면 −0.15. ${part===5?focusNote(5,10,'문제'):''}${n&&!un?` <b style="color:var(--ink)">이 레벨 새 ${part===5?'문제':'지문'}가 없어서 다른 레벨이 섞여 나와.</b>`:''}</div>
     <div class="row"><button class="primary" id="qs" ${n?'':'disabled'}>${part===5?'10문제 풀기':'지문 1개 풀기'}</button>
       ${part===5&&etsLeft().all?`<button id="qe">ETS 기출 10문제 (안 푼 것 ${etsLeft().un})</button>`:''}
       ${nw?`<button id="qw">틀린 ${part===5?'문제':'지문'} 다시 (${nw})</button>`:''}
@@ -518,7 +529,7 @@ function rQuiz(part){
 // ETS 기출(책에서 옮긴 문제, src 'ets4'): 안 푼 것을 회차·번호 순서대로, 다 풀었으면 오래전에 푼 것부터
 const isEts=q=>q&&q.src==='ets4';
 function etsLeft(){const a=pool(5).filter(([,q])=>isEts(q));return{all:a.length,un:a.filter(([,q])=>!q.seen).length}}
-function etsIds(n){return pool(5).filter(([,q])=>isEts(q)).sort((a,b)=>(!!a[1].seen-!!b[1].seen)||(a[1].seen?(a[1].last_at||0)-(b[1].last_at||0):(a[1].created||0)-(b[1].created||0))).slice(0,n).map(x=>x[0])}
+function etsIds(n){return withFocus(pool(5).filter(([,q])=>isEts(q)).sort((a,b)=>(!!a[1].seen-!!b[1].seen)||(a[1].seen?(a[1].last_at||0)-(b[1].last_at||0):(a[1].created||0)-(b[1].created||0))).map(x=>x[0]),5,n)}
 const etsNo=id=>{const m=/^ets4-t(\d+)-(\d+)$/.exec(id);return m?`T${m[1]}-${+m[2]}`:''};
 // review: 오답 다시 풀기. 정답을 이미 본 문제라 레벨은 조정하지 않는다.
 function startP5(review,only){const ids=only||(review?shuffle(wrongIds(5)).slice(0,10):pick(5,10));if(!ids.length){toast(review?'다시 풀 틀린 문제가 없어':'풀 문제가 없어');return}
@@ -574,7 +585,7 @@ function finishQ(part){const s=S.session;S.session=null;
    Part 2: 행 1개 = 문항 1개 (title=질문, choices=대답 3개, 보기 순서는 음성 순서라 섞지 않는다)
    Part 3·4: 행 1개 = 세트 1개 (passage=대본, ko=대본 해석, items=문제 3개, img=시각 자료) */
 const LCN={2:'Part 2 · 질의응답',3:'Part 3 · 짧은 대화',4:'Part 4 · 짧은 담화'};
-function lcPick(part,n){return pool(part).sort((a,b)=>(!!a[1].seen-!!b[1].seen)||(a[1].seen?(a[1].last_at||0)-(b[1].last_at||0):(a[1].created||0)-(b[1].created||0))).slice(0,n).map(x=>x[0])}
+function lcPick(part,n){return withFocus(pool(part).sort((a,b)=>(!!a[1].seen-!!b[1].seen)||(a[1].seen?(a[1].last_at||0)-(b[1].last_at||0):(a[1].created||0)-(b[1].created||0))).map(x=>x[0]),part,n)}
 function rLC(){if(S.session&&S.session.view==='lc')return rLCq();
   const cnt=p=>{const a=pool(p);return{n:a.length,un:a.filter(([,q])=>!q.seen).length}};
   const c={2:cnt(2),3:cnt(3),4:cnt(4)};const wr=[2,3,4].flatMap(p=>wrongIds(p));
@@ -583,6 +594,7 @@ function rLC(){if(S.session&&S.session.view==='lc')return rLCq();
   <div class="sheet stack">
     ${[[2,'10문제'],[3,'대화 3개'],[4,'담화 3개']].map(([p,l])=>`<div class="line"><span><b>${LCN[p]}</b> <span class="muted" style="font-size:13px">안 푼 것 ${c[p].un} / ${c[p].n}</span></span><button class="sm${p===2?' primary':''}" id="lcp${p}" ${c[p].n?'':'disabled'}>${l}</button></div>`).join('')}
     ${wr.length?`<div class="row"><button id="lcw">틀린 듣기 다시 (${wr.length})</button></div>`:''}
+    ${[[2,10,'문제'],[3,3,'세트'],[4,3,'세트']].map(([p,k,u])=>{const t=focusNote(p,k,u);return t?`<div class="muted" style="font-size:13px">${LCN[p].split(' · ')[0]}: ${t}</div>`:''}).join('')}
     <div class="muted" style="font-size:13px">Part 2는 실제 시험처럼 보기 글자를 숨기고 소리로만 들려줘. 채점하면 대본과 해석이 나와.</div></div></div>`;
   lcp2.onclick=()=>startLC(lcPick(2,10));lcp3.onclick=()=>startLC(lcPick(3,3));lcp4.onclick=()=>startLC(lcPick(4,3));
   if(wr.length)lcw.onclick=()=>startLC(shuffle(wr).slice(0,10),true)}
